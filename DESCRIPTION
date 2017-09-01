@@ -15,6 +15,14 @@ Description: Functions for applying Laplacian Eigenmaps to acoustic data for
   "Computing low-dimensional representations of speech from socio-auditory 
   structures for phonetic analyses". Journal of Phonetics.
 Depends: R (>= 3.4.0)
+Imports:
+  distdist,
+  dplyr,
+  geigen,
+  magrittr,
+  purrr,
+  tibble,
+  tidyr
 License: GPL-2
 Encoding: UTF-8
 LazyData: true

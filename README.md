@@ -49,8 +49,8 @@ a rectangular window that began 20 ms prior to the onset of sibilant frication
 or the stop burst, and that ended 60 ms after the onset of voicing for the
 vowel following the consonant. Each extracted production was exported to WAV
 format (44.1 kHz sampling rate, 16 bit resolution) and named according to the
-following template `{Participant}_{Session}_{Trial}_{Word}.WAV`. Because the
-total size of these WAV files is close to 45 MB, they are excluded when `R`
+following template `{Participant}_{Session}_{Trial}_{Orthography}.WAV`. Because 
+the total size of these WAV files is close to 45 MB, they are ignored when `R`
 builds the package from source; hence, they will not be available in the 
 installed version of the package. To access the WAV files, you must either
 download them from GitHub or clone the repository for the source package.
