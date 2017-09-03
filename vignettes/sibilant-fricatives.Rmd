@@ -1,0 +1,43 @@
+---
+title: "Sibilant Fricatives"
+author: "Patrick F. Reidy"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Sibilant Fricatives}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, echo = FALSE}
+library(magrittr)
+```
+
+
+```{r}
+Jeffrey <- function(i, j) {
+  i <- i/sum(i)
+  j <- j/sum(j)
+  sum((i-j) * log(i/j))
+}
+```
+
+
+```{r}
+phoneigen::SibilantFricatives() %>%
+  dplyr::select(Participant, Session, Trial, Orthography, ExcitationPattern) %>%
+  phoneigen::CartesianSquare() %>%
+  dplyr::mutate(W_ij = purrr::pmap_dbl(
+    list(Participant_i, Orthography_i, ExcitationPattern_i, 
+         Participant_j, Orthography_j, ExcitationPattern_j),
+    function(.p_i, .o_i, .x_i, .p_j, .o_j, .x_j) {
+      ifelse(.p_i == .p_j || .o_i == .o_j, 
+             yes = exp(-Jeffrey(.x_i, .x_j)), 
+             no = 0)
+    }
+  )) %>%
+  phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography,
+                             weights = W_ij) %>%
+  phoneigen::LaplacianEigenmaps() %>%
+  phoneigen::ReduceDimensions(e1, e2, e3)
+```

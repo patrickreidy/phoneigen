@@ -17,14 +17,7 @@ structures for phonetic analyses". _Journal of Phonetics_.
 
 ## Installation
 
-The `phoneigen` package imports the `distdist` package, the development version
-of which may be installed directly from GitHub:
-
-```r
-devtools::install_github("patrickreidy/distdist")
-```
-
-After `distdist` has been installed, `phoneigen` may be installed from GitHub:
+`phoneigen` may be installed directly from GitHub:
 
 ```r
 devtools::install_github("patrickreidy/phoneigen")
