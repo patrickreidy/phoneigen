@@ -86,13 +86,44 @@ LaplacianEigenmaps <- function(w, symmetric = FALSE) {
   le <- geigen::geigen(A = L(w, symmetric = TRUE),
                        B = D(w, symmetric = TRUE),
                        symmetric = TRUE)
-  values <- le[["values"]]
   vectors <-
     le[["vectors"]] %>%
     tibble::as_tibble() %>%
-    purrr::set_names(nm = stringr::str_c("e", 1:ncol(w))) %>%
-    dplyr::bind_cols(tibble::tibble(x = rownames(w))) %>%
-    dplyr::select(x, dplyr::everything())
-  embedding <- list(values = values, vectors = vectors)
+    purrr::set_names(nm = stringr::str_c("e", 0:(ncol(w)-1))) %>%
+    dplyr::bind_cols(tibble::tibble(X = rownames(w))) %>%
+    dplyr::select(.data$X, dplyr::everything())
+  embedding <-
+    tibble::tibble(Eigenvector = setdiff(names(vectors), "X"),
+                   Eigenvalue = le[["values"]]) %>%
+    dplyr::mutate(
+      Projection = purrr::map(.data$Eigenvector,
+                              function(.v) {
+                                vectors[, c("X", .v)]
+                              })
+    )
   return(embedding)
 }
+
+
+
+
+#' Reduce the Dimensionality of a Laplacian Eigenmaps Embedding
+#'
+#' Reduce a Laplacian Eigenmaps embedding to a small number of dimensions.
+#'
+#' @param x The value of a call to \code{\link{LaplacianEigenmaps}}.
+#' @param ... Unquoted names of eigenvectors.
+#'
+#' @return A tibble.
+#'
+#' @export
+ReduceDimensions <- function(x, ...) {
+  vectors <- purrr::map_chr(rlang::quos(...), rlang::f_text)
+  suppressMessages(
+    x %>%
+      dplyr::filter(.data$Eigenvector %in% vectors) %>%
+      dplyr::pull(.data$Projection) %>%
+      purrr::reduce(dplyr::full_join)
+  )
+}
+
