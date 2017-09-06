@@ -2,7 +2,7 @@
 # phoneigen
 
 [![Build Status](https://travis-ci.org/patrickreidy/phoneigen.svg?branch=master)](https://travis-ci.org/patrickreidy/phoneigen)
-[![Coverage Status](https://coveralls.io/repos/github/patrickreidy/phoneigen/badge.svg?branch=master&bust=1)](https://coveralls.io/github/patrickreidy/phoneigen)
+[![Coverage Status](https://coveralls.io/repos/github/patrickreidy/phoneigen/badge.svg?branch=master&bust=1)](https://coveralls.io/github/patrickreidy/phoneigen?branch=master)
 
 Functions for applying Laplacian Eigenmaps to acoustic data for
 the purpose of phonetic analysis. Includes data sets of adult speakers'
