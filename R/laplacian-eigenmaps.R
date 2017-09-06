@@ -15,8 +15,9 @@
 #'
 #' @export
 D <- function(w, symmetric = FALSE) {
+  w_quo <- rlang::enquo(w)
   if (!symmetric && !isSymmetric(w)) {
-    stop(stringr::str_c(substitute(w), " must be a symmetric matrix."))
+    stop(stringr::str_c(rlang::f_text(w_quo), " is not symmetric."))
   }
   d <- w %>% rowSums() %>% diag()
   rownames(d) <- colnames(d) <- rownames(w)
@@ -78,7 +79,7 @@ L <- function(w, symmetric = FALSE) {
 #' @export
 LaplacianEigenmaps <- function(w, symmetric = FALSE) {
   if (!symmetric && !isSymmetric(w)) {
-    stop(stringr::str_c(substitute(w), " must be a symmetric matrix."))
+    stop(stringr::str_c(substitute(w), " is not symmetric."))
   }
   if (rownames(w) %>% is.null()) {
     rownames(w) <- colnames(w) <- 1:nrow(w)
