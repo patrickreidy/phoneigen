@@ -1,0 +1,192 @@
+---
+title: "Consonant Place-of-Articulation Contrasts"
+author: "Patrick F. Reidy"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Consonant Place-of-Articulation Contrasts}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, echo = FALSE}
+library(magrittr)
+```
+
+
+This vignette demonstrates how to apply functions from the `phoneigen` package
+to compute low-dimensional representations from high-dimensional spectral 
+representations of voiceless consonants. Specifically, these functions will be 
+applied to American English-speaking adults' productions of two pairs of 
+consonants that differ in terms of their place of articulation: /s/-vs.-/ʃ/
+ and /t/-vs.-/k/.
+
+
+## Data
+
+The speech production data used for this vignette are provided by the 
+[Learning to Talk Project](learningtotalk.org) (NIDCD grant R01-02932;
+Principal Investigators Jan Edwards, Mary E. Beckman, and Benjamin Munson),
+a longitudinal study of phonological and lexical development in preschool
+children. As a part of this project, adult speakers were also tested in order
+to assess the adult production norms in the ambient community in which the
+child participants were being raised. Only productions from adult speakers
+are used in this vignette.
+
+```{r, echo = FALSE, result = "hide"}
+n_participants <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::pull(Participant) %>%
+  dplyr::n_distinct()
+n_female <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::distinct(Session) %>%
+  dplyr::pull(Session) %>%
+  stringr::str_subset(pattern = "F.*2$") %>%
+  dplyr::n_distinct()
+n_male <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::distinct(Session) %>%
+  dplyr::pull(Session) %>%
+  stringr::str_subset(pattern = "M.*2$") %>%
+  dplyr::n_distinct()
+mean_age <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::distinct(Session) %>%
+  dplyr::pull(Session) %>%
+  stringr::str_subset(pattern = "2$") %>%
+  substring(first = 5, last = 6) %>%
+  as.numeric() %>%
+  mean()
+```
+
+
+`r n_participants` adult native speakers of American English (`r n_female`
+female, `r n_male` male; mean age `r mean_age` years) completed a 
+picture-prompted word repetition task. The test words for this task were 
+selected in order to elicit multiple productions of each of the target 
+consonants /s, ʃ, t, k/ in word-initial position, across a variety of following
+vowel contexts. On each trial, a picture of the referent of the test word
+was displayed on a computer screen, and then an audio recording of the test
+word spoken by a female adult native speaker was played over loudspeakers.
+The participants were asked to repeat, into a microphone, the word that they
+heard. Each experiment session was recorded digitally at 44.1 kHz sampling rate
+and 16 bit resolution. Each participant completed two sessions.
+A phonetically-trained research assistant manually annotated the onset of
+frication (for each sibilant fricative production), the burst (for each stop
+production), and the onset of voicing (for each production).
+
+The data for the sibilant fricative /s, ʃ/ and the stop /t, k/ productions are
+accessed by calling `phoneigen::SibilantFricatives()` and `phoneigen::StopBursts()`,
+respectively.
+
+```{r, collapse = TRUE}
+phoneigen::SibilantFricatives()
+```
+
+```{r, collapse = TRUE}
+phoneigen::StopBursts()
+```
+
+Each row in these data sets corresponds to a production that will be included
+in the analyses below. Both data sets are similar in structure, with 
+`r ncol(phoneigen::SibilantFricatives())` variables:
+
+1. `File`: the name of the WAV file found in `data-raw/wav-sibilants` or
+    `data-raw/wav-stops` that contains the acoustic data for the production
+    that was extracted from the original recording of the session (from 20 ms
+    prior to `TaggedOnset` or `TaggedBurst` until 60 ms following `TaggedVOT`)
+1. `Participant`: a 4-character alphanumeric identifier for the participant
+1. `Session`: a 9-character alphanumeric identifier for the session
+1. `SessionCompleted`: the date and time that the session was completed
+1. `TaggingCompleted`: the date and time that the research assistant finished
+    annotating the acoustic landmarks for each production in the recording of
+    the session
+1. `Trial`: the trial number of the test word within the session
+1. `Orthograph`: the orthgraphic transcription of the test word
+1. `TargetC`: the WorldBet transcription of the target consonant
+1. `TargetV`: the WorldBet transcription of the vowel following the target
+    consonant
+1. `TaggedOnset` or `TaggedBurst`: the time of the onset of frication or of the
+    burst in the original recording of the full session
+1. `TaggedVOT`: the time of the onset of voicing in the original recording of 
+    the full session
+1. `Onset` or `Burst`: the time of the onset of frication or of the burst in
+    the recording `File`
+1. `VOT`: the time of the onset of voicing in the recording `File`
+1. `ExcitationPattern`: the values of the excitation pattern computed from the
+    production of the `TargetC`
+
+An excitation pattern is a psychoacoustic spectral representation that may be 
+computed by passing a Fourier spectrum through a filter bank that models the 
+auditory periphery. For the sibilant fricative productions, an excitation 
+pattern was computed from the middle half of the interval from `Onset` to
+`VOT`; for the stop productions, an excitation pattern was computed from the
+interval from 5 ms prior to `Burst` to 20 ms after `Burst`. For both types of
+production, the interval of interest was first extracted with a rectangular
+window, and an eighth-order multitaper spectrum was computed (time-bandwidth
+parameter nW = 4). This spectrum was then passed through a filter bank that
+comprised 361 fourth-order gammatone filters. The center frequencies of these
+filters were evenly spaced from 3 to 39 (i.e., 0.1 interchannel separation)
+along the equivalent rectangular bandwidth (ERB) scale---a logarithmic
+transformation of the physical hertz scale that models the tonotopic mapping
+of the basilar membrane. The bandwidths of the filters increased in proportion 
+to their center frequencies; hence, filters centered at higher frequencies were 
+wider than those centered at lower frequencies, which models the differential
+frequency selectivity of the auditory periphery. Each channel in this filter
+bank can thus be thought of as the frequency tuning properties of a narrow
+cross-section of the basilar membrane, and the filter bank, as a whole, may be
+thought of as a sequence of such cross-sections spaced evenly along the length
+of the basilar membrane. An excitation pattern results from applying this
+filter bank to an input spectrum, summing the energy within the signal output by
+each channel, and associating those energy values to the center frequencies of 
+the channels in the filter bank. Hence, an excitation pattern is a function from
+frequencies on the ERB scale to energy values---a pattern of excitation across
+a sequence of "auditory filters". 
+
+In the following two sections, the excitation patterns are input to the
+Laplacian Eigenmaps algorithm in order to learn low-dimensional representations
+that characterize the /s/-vs.-/ʃ/ and the /t/-vs.-/k/ contrast, respectively.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Sibilant fricatives
+
+```{r}
+Jeffrey <- function(i, j) {
+  i <- i/sum(i)
+  j <- j/sum(j)
+  sum((i-j) * log(i/j))
+}
+```
+
+
+```{r, eval = FALSE}
+phoneigen::SibilantFricatives() %>%
+  dplyr::select(Participant, Session, Trial, Orthography, ExcitationPattern) %>%
+  phoneigen::CartesianSquare() %>%
+  dplyr::mutate(
+    W_ij = purrr::pmap_dbl(
+      list(Participant_i, Orthography_i, ExcitationPattern_i, 
+            Participant_j, Orthography_j, ExcitationPattern_j),
+      function(.p_i, .o_i, .x_i, .p_j, .o_j, .x_j) {
+        ifelse(.p_i == .p_j || .o_i == .o_j, yes = exp(-Jeffrey(.x_i, .x_j)), no = 0)
+      }
+    )
+  ) %>%
+  phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography, weights = W_ij) %>%
+  phoneigen::LaplacianEigenmaps() %>%
+  phoneigen::ReduceDimensions(e1, e2, e3)
+```
