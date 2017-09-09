@@ -14,6 +14,7 @@
 #'
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data
+#' @importFrom rlang :=
 #'
 #' @name phoneigen-package
 #' @docType package
