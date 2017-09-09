@@ -19,13 +19,14 @@ to compute low-dimensional representations from high-dimensional spectral
 representations of voiceless consonants. Specifically, these functions will be 
 applied to American English-speaking adults' productions of two pairs of 
 consonants that differ in terms of their place of articulation: /s/-vs.-/ʃ/
- and /t/-vs.-/k/.
+and /t/-vs.-/k/.
+
 
 
 ## Data
 
 The speech production data used for this vignette are provided by the 
-[Learning to Talk Project](learningtotalk.org) (NIDCD grant R01-02932;
+[Learning to Talk Project](http://learningtotalk.org) (NIDCD grant R01-02932;
 Principal Investigators Jan Edwards, Mary E. Beckman, and Benjamin Munson),
 a longitudinal study of phonological and lexical development in preschool
 children. As a part of this project, adult speakers were also tested in order
@@ -33,7 +34,7 @@ to assess the adult production norms in the ambient community in which the
 child participants were being raised. Only productions from adult speakers
 are used in this vignette.
 
-```{r, echo = FALSE, result = "hide"}
+```{r, echo = FALSE, results = "hide"}
 n_participants <-
   phoneigen::SibilantFricatives() %>%
   dplyr::pull(Participant) %>%
@@ -60,7 +61,6 @@ mean_age <-
   mean()
 ```
 
-
 `r n_participants` adult native speakers of American English (`r n_female`
 female, `r n_male` male; mean age `r mean_age` years) completed a 
 picture-prompted word repetition task. The test words for this task were 
@@ -80,11 +80,11 @@ The data for the sibilant fricative /s, ʃ/ and the stop /t, k/ productions are
 accessed by calling `phoneigen::SibilantFricatives()` and `phoneigen::StopBursts()`,
 respectively.
 
-```{r, collapse = TRUE}
+```{r}
 phoneigen::SibilantFricatives()
 ```
 
-```{r, collapse = TRUE}
+```{r}
 phoneigen::StopBursts()
 ```
 
@@ -150,43 +150,487 @@ that characterize the /s/-vs.-/ʃ/ and the /t/-vs.-/k/ contrast, respectively.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ## Sibilant fricatives
+
+The sibilant fricatives /s, ʃ/ are articulated by raising the tongue toward the
+roof of the mouth, so as to form a narrow constriction in the oral cavity. 
+Turbulence noise sources are generated when the air flowing through this
+linguopalatal constriction becomes turbulent and when this turbulent jet 
+impinges on the teeth, downstream from the constriction. These noise sources
+excite the cavity anterior to the constriction; however, the cavity posterior
+to the constriction is not excited because it is acoustically decoupled, due
+to the narrow aperture of the constriction. Consequently, sibilant frication
+is characterized spectrally by concentrations of energy at high frequencies,
+and the difference in place of articulation that differentiates /s/ and /ʃ/
+is represented primarily in terms of the range of frequencies in which energy 
+is concentrated: compared with /ʃ/, the more anterior place of articulation 
+for /s/ entails a smaller front-cavity volume and thus resonances at higher 
+frequencies. This spectral difference between /s/ and /ʃ/ is  illustrated in 
+Figure 1 below, which shows excitation patterns computed from participant 
+A50N's productions of the initial sibilants in the words 'sister' (black line) 
+and 'shoes' (grey line).
+
+```{r, echo = FALSE, results = "hide"}
+fig1_caption <- stringr::str_c(
+  "Figure 1: Excitation patterns computed from A50N's productions of",
+  "/s/ (black) and /ʃ/ (grey).",
+  sep = " "
+)
+```
+
+```{r, echo = FALSE, fig.cap = fig1_caption, fig.width = 7, fig.height = 3.5, fig.retina = 2, fig.align = "center"}
+tibble::tibble(ERB = seq(from = 3, to = 39, by = 0.1),
+               s = phoneigen::SibilantFricatives()[[15, "ExcitationPattern"]],
+               sh = phoneigen::SibilantFricatives()[[20, "ExcitationPattern"]]) %>%
+  dplyr::mutate(s = 10 * log10(s / min(s)),
+                sh = 10 * log10(sh / min(sh))) %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = ERB)) +
+  ggplot2::theme_bw() +
+  ggplot2::xlab("Frequency (ERB scale)") +
+  ggplot2::ylab("Excitation (dB)") +
+  ggplot2::geom_line(mapping = ggplot2::aes(y = sh), color = "gray75") +
+  ggplot2::geom_line(mapping = ggplot2::aes(y = s), color = "black")
+```
+
+### Spectral moments
+
+Spectral representations, such as the excitation patterns shown above, pose a
+problem to subsequent phonetic analyses because of their high dimensionality.
+A commonly adopted solution to this problem in the phonetics literature has
+been to transform a spectral representation through a small number of 
+pre-determined functions that yield measures of the shape of the spectrum.
+One set of functions that has often been used to characterize sibilant
+fricatives (and voiceless obstruents, more generally) are _spectral moments_,
+which are based on the well-grounded mathematical theory of moments of a 
+probability mass function. Because a power spectrum is a non-negative function, 
+it may be normalized by its sum so that it sums to 1. If `p` denotes a vector
+of probabilities assigned over `x`, then there are three classes of moments that
+are useful for characterizing the shape of `p`:
+
+1. Moments: the `n`th _moment_ is defined as `sum(p * x^n)`
+2. Central moments: the `n`th _central moment_ is defined as 
+    `sum(p * (x - mu)^n)`, where `mu` is the first moment of `p`
+3. Standardized moments: the `n`th _standardized moment_ is defined as
+    `sum(p * ((x - mu) / sigma)^n)`, where `mu` is as above and `sigma^2` is
+    the second central moment of `p`
+
+Spectral moments are a collection of all three types of moments defined above.
+The quantities most commonly used as spectral moments are the first moment
+(mean or centroid), which indicates the center of gravity of the distribution 
+along the frequency scale; the second central moment (the variance) or its 
+square root (the standard deviation), both of which indicate the spread of the 
+distribution; the third standardized moment (skewness), a unitless quantity
+that indicates the asymmetry of the distribution; and the fourth standardized
+moment (kurtosis), a unitless quantity that indicates the heaviness of the
+tails of the distribution.
+
+Although spectral moments, as representations for sibilant fricatives, have
+been critiqued for being ambiguously interpretable in terms of the underlying
+articulation (e.g., Koenig, Shadle, Preston & Mooshammer, 2013) and for not
+capturing subtle spectral characteristics that may be perceptually salient
+(e.g., Jannedy & Weirich, 2017), we nonetheless take them as the jumping-off
+point for our discussion of low-dimensional representations of sibilant 
+fricatives because of their ease of computation, their canonical mathematical 
+interpretation, and their sheer pervasiveness in the phonetics literature.
+For example, spectral moments have been used to represent /s/ and /ʃ/ in
+studies that investigated place-of-articulation differences (e.g., Forrest,
+Weismer, Milenkovic & Dougall, 1988; Jongman, Wayland & Wong, 2000),
+developmental differences (e.g., Li, 2012; Nissen & Fox, 2005; Nittrouer,
+Studdert-Kennedy & McGowan, 1989), sex-related differences (e.g., Fox & Nissen,
+2005; Romeo, Hazan & Pettinato, 2013), among others.
+
+The literature suggests that centroid and skewness are the two most reliable 
+spectral moments for differentiating the place of articulation of /s/ vs. /ʃ/
+(e.g., Forrest et al., 1988; Jongman et al., 2000; Shadle & Mair, 1996). This
+consensus is perhaps unsurprising, given that centroid indexes the location of
+energy concentration along the frequency scale, which is expected to vary
+between sibilant fricatives due to differences in front cavity volume that are
+concomittant with differences in place of articulation; and that skewness tends
+to be highly correlated with centroid (Blacklock, 2004), which is likely due
+to the finite support of spectral reprenstations, imposed by the sampling rate
+of the acoustic waveform.
+
+The left panel of Figure 2 below plots the sibilant fricatives' skewness values
+against their centroid values. Here, it is apparent differences in place of
+articulation and in talker sex are indicated by the first and third spectral
+moments; however, these measures do not separate the productions in terms of
+either place of articulation or talker sex. Furthermore, both spectral moments
+simultaneously indicate two distinct dimensions of information conveyed in the 
+acoustics of sibilant fricatives: the linguistic dimension of the target 
+consonant, and the indexical dimension of the talker's sex. For example, along
+the centroid dimension, the cluster centers are ordered such that males' /ʃ/ <
+females' /ʃ/ < males' /s/ < females' /s/. The separation between the 
+place-of-articulation categories may be enhanced through normalizing the 
+centroid and skewness values by subtracting each talkers' mean centroid and 
+mean skewness values, respectively, as is shown in the right panel of Figure 2;
+however, an unappealing effect of this normalization is that indexical 
+differences that indicate talker sex are washed away.
+
+```{r, echo = FALSE, results = "hide"}
+fig2_caption <- stringr::str_c(
+  "Figure 2: Distributions of skewness and centroid (raw: left panel,",
+  "normalized: right panel) computed from the sibilant fricatives'",
+  "excitation patterns. Point shape indicates target consonant",
+  "(/s/: o's, /ʃ/: x's). Color indicates talker sex (female: orange, male: blue).",
+  sep = " "
+) 
+```
+
+```{r, echo = FALSE, fig.cap = fig2_caption, fig.width = 7, fig.height = 3, fig.retina = 2, fig.align = "center"}
+Centroid <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
+  p <- p / sum(p)
+  sum(p * x)
+}
+
+StdDeviation <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
+  p <- p / sum(p)
+  sqrt(sum(p * (x - Centroid(p, x))^2))
+}
+
+Skewness <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
+  p <- p / sum(p)
+  sum(p * ((x - Centroid(p, x)) / StdDeviation(p, x))^3)
+}
+
+Kurtosis <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
+  p <- p / sum(p)
+  sum(p * ((x - Centroid(p, x)) / StdDeviation(p, x))^4)
+}
+
+Moments <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::mutate(
+    Centroid = purrr::map_dbl(ExcitationPattern, Centroid),
+    StdDeviation = purrr::map_dbl(ExcitationPattern, StdDeviation),
+    Skewness = purrr::map_dbl(ExcitationPattern, Skewness),
+    Kurtosis = purrr::map_dbl(ExcitationPattern, Kurtosis),
+    Sex = substring(Session, first = 7, last = 7)
+  ) %>%
+  dplyr::group_by(Participant) %>%
+  dplyr::mutate(
+    CentroidMean = mean(Centroid),
+    StdDeviationMean = mean(StdDeviation),
+    SkewnessMean = mean(Skewness),
+    KurtosisMean = mean(Kurtosis)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    CentroidNormed = Centroid - CentroidMean,
+    StdDeviationNormed = StdDeviation - StdDeviationMean,
+    SkewnessNormed = Skewness - SkewnessMean,
+    KurtosisNormed = Kurtosis - KurtosisMean
+  )
+
+# M1M2_raw <- 
+#   MomentsRaw %>%
+#   ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, 
+#                                          y = StdDeviation,
+#                                          shape = TargetC,
+#                                          color = Sex)) +
+#   ggplot2::theme_bw() +
+#   ggplot2::xlab("Centroid (ERB)") +
+#   ggplot2::ylab("Standard deviation (ERB)") +
+#   ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
+#   ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
+#                                          "M" = callierr::skyBlue())) +
+#   ggplot2::guides(shape = FALSE, color = FALSE) +
+#   ggplot2::geom_point()
+
+M1M3_raw <- 
+  Moments %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, 
+                                         y = Skewness,
+                                         shape = TargetC,
+                                         color = Sex)) +
+  ggplot2::theme_bw() +
+  ggplot2::xlab("Centroid (ERB)") +
+  ggplot2::ylab("Skewness") +
+  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
+  ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
+                                         "M" = callierr::skyBlue())) +
+  ggplot2::guides(shape = FALSE, color = FALSE) +
+  ggplot2::geom_point()
+
+M1M3_normed <-
+  Moments %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = CentroidNormed, 
+                                         y = SkewnessNormed,
+                                         shape = TargetC,
+                                         color = Sex)) +
+  ggplot2::theme_bw() +
+  ggplot2::xlab("Normalized centroid (ERB)") +
+  ggplot2::ylab("Normalized skewness") +
+  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
+  ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
+                                         "M" = callierr::skyBlue())) +
+  ggplot2::guides(shape = FALSE, color = FALSE) +
+  ggplot2::geom_point()
+
+# M1M4_raw <- 
+#   MomentsRaw %>%
+#   ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, 
+#                                          y = Kurtosis,
+#                                          shape = TargetC,
+#                                          color = Sex)) +
+#   ggplot2::theme_bw() +
+#   ggplot2::xlab("Centroid (ERB)") +
+#   ggplot2::ylab("Kurtosis") +
+#   ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
+#   ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
+#                                          "M" = callierr::skyBlue())) +
+#   ggplot2::guides(shape = FALSE, color = FALSE) +
+#   ggplot2::geom_point()
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(M1M3_raw, vp = grid::viewport(layout.pos.col = 1))
+print(M1M3_normed, vp = grid::viewport(layout.pos.col = 2))
+#print(M1M4, vp = grid::viewport(layout.pos.col = 3))
+```
+
+
+
+### Laplacian eigenmaps
+
+Whereas the method of spectral moments projects high-dimensional data into a 
+low-dimensional space whose dimensions reflect pre-determined shape features 
+of each high-dimensional observation, the Laplacian eigenmaps algorithm 
+seeks instead to uncover the structure of a low-dimensional object near which
+the data lie in the high-dimensional space. The manuscript associated with
+the `phoneigen` package (Plummer & Reidy, submitted) thoroughly develops the
+mathematical concepts necessary to understand the Laplacian eigenmaps
+algorithm; so, this vignette focuses on the computational steps necessary to
+apply the Laplacian eigenmaps algorithm to a data set that is structured
+similarly to `phoneigen::SibilantFricatives()`, i.e. such that the 
+high-dimensional data are found in a single (list-)column and the other columns
+denote metadata for the high-dimensional data that uniquely identify each
+high-dimensional observation.
+
+The `phoneigen` package provides a number of functions that may be chained
+together using the forward-pipe operator `%>%` from the `magrittr` package.
+The functions `phoneigen::CartesianSquare`, `phoneigen::WeightEdgesIf`, and
+`phoneigen::AdjacencyMatrix` facilitate the construction of a symmetric
+weighted adjacency matrix from a `data.frame`-like representation of the
+raw data. Furthermore, these functions perform all of the bookkeeping necessary
+when reshaping data from a `data.frame`-like representation to a `matrix`
+representation.
+
+The first step is to pass the data set to `phoneigen::CartesianSquare`, which
+additionally takes a comma-separated list of unquoted variable names as 
+arguments. `phoneigen::CartesianSquare` selects just the columns matched by the
+unquoted variable names and then returns the cross product of that restricted
+data set with itself. The motivation for `phoneigen::CartesianSquare` is to
+construct a vectorized matrix representation of the data, which will ultimately
+be reshaped into a square matrix. Hence, the unquoted variable names passed
+to `phoneigen::CartesianSquare` should include the variables that uniquely
+identify each high-dimensional observation and the variables that will be
+used to compute the edge-weights of the graph. For the `phoneigen::SibilantFricatives()`
+data set, the relevant variables are thus `Participant`, `Session`, `Trial`,
+`Orthography`, and `ExcitationPattern`. The data set returned by
+`phoneigen::CartesianSquare` has twice as many columns as the input data set,
+with their names determined by suffixing the input unquoted variables with
+`_i` and `_j`, respectively. The motivating idea for `phoneigen::CartesianSquare`
+is that the variables suffixed by `_i` and `_j` determine the row and column
+positions, respectively, of a cell in a square matrix.
+
+```{r, collapse = TRUE}
+squared <-
+  phoneigen::CartesianSquare(
+    x = phoneigen::SibilantFricatives(),
+    Participant, Session, Trial, Orthography, ExcitationPattern
+  )
+
+dplyr::select(squared, Session_i, Orthography_i, Session_j, Orthography_j)
+```
+
+Once the frame of a vectorized square matrix has been created with
+`phoneigen::CartesianSquare`, the weights of edges within that matrix may be
+added with `phoneigen::WeightEdgesIf`, which takes as arguments a data frame,
+`x`; an optional unquoted variable name, `weights`, for the weight 
+values (if `weights` is missing at call time, then the weight values are 
+assigned to a column named `W_ij`); an unquoted expression,
+`condition`, which, within `x`, evaluates to a logical vector; and
+an unquoted expression, `values`, which, within `x`, evaluates to
+a numeric vector.
+
+While the examples in the mathematical development of Laplacian eigenmaps
+constructed the graph edges through a nearest neighbors search based on 
+Euclidean distance, this example will instead construct graph edges based on
+the identity of the talker who produced the target consonant and the identity
+of the lexical item within which the target consonant was produced. Furthermore,
+the edge weights will be derived, not from Euclidean distance between two
+adjacent excitation patterns, but by an information-theoretic distance that 
+treats the excitation patterns as discrete probability mass functions.
+Specifically, the Jeffrey divergence---a symmetric version of the Kullback-Leibler
+divergence---will be used. We first define this divergence measure as a 
+generic function that may be applied either to two numeric vectors or to
+two lists of numeric vectors.
 
 ```{r}
 Jeffrey <- function(i, j) {
+  UseMethod("Jeffrey", i)
+}
+
+Jeffrey.numeric <- function(i, j) {
   i <- i/sum(i)
   j <- j/sum(j)
   sum((i-j) * log(i/j))
 }
+
+Jeffrey.list <- function(i, j) {
+  purrr::map2_dbl(i, j, Jeffrey.numeric)
+}
 ```
 
+With the `Jeffrey` family of functions defined, it is now possible to
+write a compact block of code that assigns weights to edges between nodes. The
+graph structure that will be used has edges between all productions produced
+by a given talker (i.e., the within-talker subgraph is complete). Productions
+are aligned across talkers if they are productions of the same word; i.e., the
+within-talker manifolds are aligned so that productions of the same target
+word are in correspondence. If two productions `i` and `j` are 
+connected, then the weight of their edge is equal to `exp(-Jeffrey(i, j))`,
+a measure of similarity that is valued within the interval `[0, 1]`. If two
+productions do not pass the tests indicated by `condition` then their edge
+weight is `0`.
 
-```{r, eval = FALSE}
-phoneigen::SibilantFricatives() %>%
-  dplyr::select(Participant, Session, Trial, Orthography, ExcitationPattern) %>%
-  phoneigen::CartesianSquare() %>%
-  dplyr::mutate(
-    W_ij = purrr::pmap_dbl(
-      list(Participant_i, Orthography_i, ExcitationPattern_i, 
-            Participant_j, Orthography_j, ExcitationPattern_j),
-      function(.p_i, .o_i, .x_i, .p_j, .o_j, .x_j) {
-        ifelse(.p_i == .p_j || .o_i == .o_j, yes = exp(-Jeffrey(.x_i, .x_j)), no = 0)
-      }
-    )
+```{r, collapse = TRUE}
+weighted <-
+  phoneigen::WeightEdgesIf(
+    x = squared,
+    condition = Participant_i == Participant_j | Orthography_i == Orthography_j,
+    values = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  )
+
+dplyr::select(weighted, Session_i, Orthography_i, Session_j, Orthography_j, W_ij)
+
+dplyr::filter(weighted, Participant_i != Participant_j & Orthography_i != Orthography_j) %>%
+  dplyr::select(Session_i, Orthography_i, Session_j, Orthography_j, W_ij)
+```
+
+Once the weights are assigned to edges, the values of the weights variable,
+`W_ij`, must be reshaped into a square matrix. This task is performed by
+the function `phoneigen::AdjacencyMatrix`, which takes as arguments a data frame,
+`x`; an unquoted list of variables that when suffixed with `_i` match
+variable names in `x`; and an optional unquoted variable name, `weights`,
+which should match the variable in `x` whose values denote the edge
+weights of the graph (if `weights` is missing at call time, then the
+name of the weights variable is assumed to be `W_ij`). The row and column 
+names of the resulting matrix are determined by pasting together the values of 
+the unquoted variables provided at call time. Furthermore, to ensure that the
+resulting matrix is symmetrix, the `phoneigen::AdjacencyMatrix` arranges the 
+rows of `x` according to the order of unquoted variables provided at call
+time.
+
+```{r, collapse = TRUE}
+adjacency_matrix <-
+  phoneigen::AdjacencyMatrix(
+    x = weighted, 
+    Participant, Session, Trial, Orthography
+  )
+
+isSymmetric(adjacency_matrix)
+
+adjacency_matrix[1:5, 1:2]
+```
+
+The Laplacian eigenvectors of the graph's `adjacency_matrix` are computed by
+the function `phoneigen::LaplacianEigenmaps`. Internally, this function is
+powered by the functions `phoneigen::L` and `phoneigen::D`, which compute the
+graph's Laplacian and degree matrices, respectively, which are then passed to
+`geigen::geigen` to solve the generalized eigenvalue problem. 
+`phoneigen::LaplacianEigenmaps` returns a tibble that has as many rows as the
+original data set (in this case, `phoneigen::SibilantFricatives()`). The 
+`Eigenvector` variable assigns a name to each Laplacian eigenvector, beginning
+with `e0`. The `Eigenvalue` variable denotes the eigenvalues associated with
+the Laplacian eigenvectors; the arrows of the returned tibble are arranged in
+increasing order of `Eigenvalue`s. Finally, the `Projection` variable is a 
+list-column of tibbles that have as many rows as the original data set and
+two variables that denote the projection of the data onto a Laplacian eigenvector:
+a variable named `X` whose values are taken from the row names of the 
+`adjacency_matrix`, which should uniquely identify observations in the original
+data; and a variable with the same name as the corresponding `Eigenvector`, that
+denotes the values of that Laplacian eigenvector, i.e. a one-dimensional
+embedding of the data denoted by `X`.
+
+```{r, collapse = TRUE}
+eigenmaps <-
+  phoneigen::LaplacianEigenmaps(adjacency_matrix)
+
+eigenmaps
+
+eigenmaps$Projection[[2]]
+```
+
+Recall that the optimal `n`-dimensional embedding of the data is given by the 
+Laplacian eigenvectors associated with the `n` least non-zero eigenvalues. In
+the output of `phoneigen::LaplacianEigenmaps(adjacency_matrix)` printed above,
+none of the `Eigenvalue`s are `0`; however, it would be incorrect to include
+the first Laplacian eigenvector `e0` in the low-dimensional embedding.
+By construction, the graph used in this example is connected; hence, theory
+indicates that the least eigenvalue should be `0`. While the least
+eigenvalue above is not identically `0`, it is less than a reasonable
+threshold of `sqrt(.Machine$double.eps)`. Consequently, the first 
+Laplacian eigenvector is ignored, and only eigenvectors `e1` and above are 
+considered. Here, we stress that `phoneigen::LaplacianEigenmaps` does not
+suggest a threshold below which `Eigenvalue`s should be considered `0`.
+Furthermore, if the constructed graph is not connected, more than one
+eigenvalue will be `0`, by theory. Hence, users should be thoughtful when
+interpreting the output of `phoneigen::LaplacianEigenmaps` and deciding which
+Laplacian eigenvectors offer the optimal low-dimensional embedding.
+
+A low-dimensional representation of the data can be easily pulled
+from the computed `eigenmaps` with the function `phoneigen::ReduceDimensions`,
+which takes as arguments a data frame, `x`; and a comma-separated list of
+unquoted variables that exactly match names of `Eigenvector`s in `x`.
+
+```{r, collapse = TRUE}
+reduced <-
+  phoneigen::ReduceDimensions(x = eigenmaps, e1, e2)
+
+reduced
+```
+
+The low-dimensional data are then in a format that can be passed to a function
+for statistical modeling (e.g., `lm` or `lme4::lmer`) or for plotting (e.g., 
+`ggplot2::ggplot`). Figure 3 shows the distribution of the sibilant fricatives
+in a two-dimensional space defined by the first and second non-zero Laplacian
+eigenvectors. The first Laplacian eigenvector, `e1`, encodes the linguistic
+differences, yielding linearly separable clusters for /s/ and /ʃ/. The second
+Laplacian eigenvector, `e2`, encodes the indexical differences, indicating
+talker sex.
+
+```{r, echo = FALSE, results = "hide"}
+fig3_caption <- stringr::str_c(
+  "Figure 3: Distributions of first and second non-zero Laplacian eigenvectors",
+  "learned from the sibilant fricatives' excitation patterns. Point shape",
+  "indicates target consonant (/s/: o's, /ʃ/: x's). Color indicates",
+  "talker sex (female: orange, male: blue).",
+  sep = " "
+)
+```
+
+```{r, echo = FALSE, fig.cap = fig3_caption, fig.width = 5, fig.height = 4, fig.retina = 2, fig.align = "center"}
+reduced %>%
+  tidyr::separate(X, into = c("Participant", "Session", "Trial", "Orthography")) %>%
+  dplyr::left_join(
+    dplyr::select(phoneigen::SibilantFricatives(),
+                  Participant, Session, Trial, Orthography, TargetC),
+    by = c("Participant", "Session", "Trial", "Orthography")
   ) %>%
-  phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography, weights = W_ij) %>%
-  phoneigen::LaplacianEigenmaps() %>%
-  phoneigen::ReduceDimensions(e1, e2, e3)
+  dplyr::mutate(Sex = substring(Session, first = 7, last = 7)) %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = e1, 
+                                         y = e2,
+                                         shape = TargetC,
+                                         color = Sex)) +
+  ggplot2::theme_bw() +
+  ggplot2::xlab("First non-zero Laplacian eigenvector (e1)") +
+  ggplot2::ylab("Second non-zero Laplacian eigenvector (e2)") +
+  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
+  ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
+                                         "M" = callierr::skyBlue())) +
+  ggplot2::guides(shape = FALSE, color = FALSE) +
+  ggplot2::geom_point(size = 2)
 ```
+
+
