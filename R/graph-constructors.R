@@ -62,7 +62,7 @@ CartesianSquare <- function(x, ..., weights = rlang::missing_arg()) {
 WeightEdgesIf <- function(x, weights = rlang::missing_arg(), condition, values) {
   weights_quo <- rlang::enquo(weights)
   if (rlang::quo_name(weights_quo) == "rlang::missing_arg()") {
-    weights_quo <- rlang::quo(W_ij)
+    weights_quo <- rlang::sym("W_ij")
   }
   weights_name <- rlang::quo_name(weights_quo)
   condition_quo <- rlang::enquo(condition)
@@ -100,7 +100,7 @@ WeightEdgesIf <- function(x, weights = rlang::missing_arg(), condition, values) 
 AdjacencyMatrix <- function(x, ..., weights = rlang::missing_arg()) {
   weights_quo <- rlang::enquo(weights)
   if (rlang::quo_name(weights_quo) == "rlang::missing_arg()") {
-    weights_quo <- rlang::quo(W_ij)
+    weights_quo <- rlang::sym("W_ij")
   }
   nodes <- purrr::map_chr(rlang::quos(...), rlang::f_text)
   i <- stringr::str_c(nodes, "i", sep = "_")
@@ -121,24 +121,4 @@ AdjacencyMatrix <- function(x, ..., weights = rlang::missing_arg()) {
     matrix(nrow = length(node_names), ncol = length(node_names),
            dimnames = list(node_names, node_names))
   return(adjacency_matrix)
-  # weights_quo <- rlang::enquo(weights)
-  # nodes <- purrr::map_chr(rlang::quos(...), rlang::f_text)
-  # i <- stringr::str_c(nodes, "i", sep = "_")
-  # j <- stringr::str_c(nodes, "j", sep = "_")
-  # ij <- c(i, j)
-  # node_names <-
-  #   x %>%
-  #   dplyr::distinct(rlang::UQS(rlang::syms(i))) %>%
-  #   dplyr::arrange(rlang::UQS(rlang::syms(i))) %>%
-  #   dplyr::mutate(
-  #     Node = stringr::str_c(rlang::UQS(rlang::syms(i)), sep = "_")
-  #   ) %>%
-  #   dplyr::pull(.data$Node)
-  # adjacency_matrix <-
-  #   x %>%
-  #   dplyr::arrange(rlang::UQS(rlang::syms(ij))) %>%
-  #   dplyr::pull(rlang::UQ(weights_quo)) %>%
-  #   matrix(nrow = length(node_names), ncol = length(node_names),
-  #          dimnames = list(node_names, node_names))
-  # return(adjacency_matrix)
 }

@@ -4,7 +4,7 @@
 \alias{AdjacencyMatrix}
 \title{Adjacency Matrix}
 \usage{
-AdjacencyMatrix(x, ..., weights = .data$W_ij)
+AdjacencyMatrix(x, ..., weights = rlang::missing_arg())
 }
 \arguments{
 \item{x}{A data frame or \code{\link[tibble]{tibble}}.}
