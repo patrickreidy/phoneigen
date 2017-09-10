@@ -18,6 +18,8 @@ Depends: R (>= 3.4.0)
 Imports:
   dplyr,
   geigen,
+  ggplot2,
+  grid,
   magrittr,
   purrr,
   rlang,

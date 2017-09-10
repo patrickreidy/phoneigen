@@ -321,21 +321,6 @@ Moments <-
     KurtosisNormed = Kurtosis - KurtosisMean
   )
 
-# M1M2_raw <- 
-#   MomentsRaw %>%
-#   ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, 
-#                                          y = StdDeviation,
-#                                          shape = TargetC,
-#                                          color = Sex)) +
-#   ggplot2::theme_bw() +
-#   ggplot2::xlab("Centroid (ERB)") +
-#   ggplot2::ylab("Standard deviation (ERB)") +
-#   ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-#   ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
-#                                          "M" = callierr::skyBlue())) +
-#   ggplot2::guides(shape = FALSE, color = FALSE) +
-#   ggplot2::geom_point()
-
 M1M3_raw <- 
   Moments %>%
   ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, 
@@ -346,8 +331,8 @@ M1M3_raw <-
   ggplot2::xlab("Centroid (ERB)") +
   ggplot2::ylab("Skewness") +
   ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-  ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
-                                         "M" = callierr::skyBlue())) +
+  ggplot2::scale_color_manual(values = c("F" = "#E98300",
+                                         "M" = "#5BC6EB")) +
   ggplot2::guides(shape = FALSE, color = FALSE) +
   ggplot2::geom_point()
 
@@ -361,31 +346,15 @@ M1M3_normed <-
   ggplot2::xlab("Normalized centroid (ERB)") +
   ggplot2::ylab("Normalized skewness") +
   ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-  ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
-                                         "M" = callierr::skyBlue())) +
+  ggplot2::scale_color_manual(values = c("F" = "#E98300",
+                                         "M" = "#5BC6EB")) +
   ggplot2::guides(shape = FALSE, color = FALSE) +
   ggplot2::geom_point()
-
-# M1M4_raw <- 
-#   MomentsRaw %>%
-#   ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, 
-#                                          y = Kurtosis,
-#                                          shape = TargetC,
-#                                          color = Sex)) +
-#   ggplot2::theme_bw() +
-#   ggplot2::xlab("Centroid (ERB)") +
-#   ggplot2::ylab("Kurtosis") +
-#   ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-#   ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
-#                                          "M" = callierr::skyBlue())) +
-#   ggplot2::guides(shape = FALSE, color = FALSE) +
-#   ggplot2::geom_point()
 
 grid::grid.newpage()
 grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
 print(M1M3_raw, vp = grid::viewport(layout.pos.col = 1))
 print(M1M3_normed, vp = grid::viewport(layout.pos.col = 2))
-#print(M1M4, vp = grid::viewport(layout.pos.col = 3))
 ```
 
 
@@ -627,8 +596,8 @@ reduced %>%
   ggplot2::xlab("First non-zero Laplacian eigenvector (e1)") +
   ggplot2::ylab("Second non-zero Laplacian eigenvector (e2)") +
   ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-  ggplot2::scale_color_manual(values = c("F" = callierr::solarOrange(),
-                                         "M" = callierr::skyBlue())) +
+  ggplot2::scale_color_manual(values = c("F" = "#E98300",
+                                         "M" = "#5BC6EB")) +
   ggplot2::guides(shape = FALSE, color = FALSE) +
   ggplot2::geom_point(size = 2)
 ```
