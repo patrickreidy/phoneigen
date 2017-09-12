@@ -56,6 +56,7 @@ sibilantFricatives <-
 # 3. Apply the `auditoryModel` to the multitaper spectrum.
 stopBursts <-
   l2tStops() %>%
+  dplyr::filter(Participant %in% stringr::str_c("A", 50:65, "N")) %>%
   dplyr::mutate(ExcitationPattern = purrr::pmap(
     list(File, Burst, VOT),
     function(.file, .burst, .vot) {
@@ -74,4 +75,4 @@ stopBursts <-
 
 
 # Internalize the `sibilantFricatives` and `stopBursts` data sets.
-devtools::use_data(sibilantFricatives, stopBursts, internal = TRUE)
+devtools::use_data(sibilantFricatives, stopBursts, internal = TRUE, overwrite = TRUE)

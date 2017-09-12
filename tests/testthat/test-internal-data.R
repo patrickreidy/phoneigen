@@ -138,7 +138,7 @@ testthat::test_that("Variable names are correct", {
 testthat::test_that("1179 observations are present", {
   testthat::expect_equal(
     object = nrow(phoneigen::StopBursts()),
-    expected = 1179
+    expected = 1020
   )
 })
 
