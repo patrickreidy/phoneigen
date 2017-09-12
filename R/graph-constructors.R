@@ -72,11 +72,61 @@ WeightEdgesIf <- function(x, weights = rlang::missing_arg(), condition, values) 
   }
   dplyr::mutate(
     x,
-    rlang::UQ(weights_name) := ifelse(rlang::eval_tidy(condition_quo, data = x),
-                                      rlang::eval_tidy(values_quo, data = x),
-                                      rlang::eval_tidy(weights_quo, data = x))
+    rlang::UQ(weights_quo) := ifelse(rlang::eval_tidy(condition_quo, data = x),
+                                     rlang::eval_tidy(values_quo, data = x),
+                                     rlang::eval_tidy(weights_quo, data = x))
   )
 }
+
+
+#' Normalize Weights
+#'
+#' @param x A data frame or tibble.
+#' @param weights The unquoted name of a numeric column in \code{x} whose values
+#'   will be shaped into a square adjacency matrix.
+#'
+#' @return A data frame that is like \code{x}, except that the values of the
+#'   \code{weights} variable, \code{W(i,j)} have been normalized such that
+#'   \code{W_tilde(i, j) = (i/n) * (W(i,j) / sqrt(E_x[W(i,x)] * E_x[W(j,x)]))}.
+#'
+#' @export
+Normalize <- function(x, weights = rlang::missing_arg()) {
+  weights_quo <- rlang::enquo(weights)
+  if (rlang::quo_name(weights_quo) == "rlang::missing_arg()") {
+    weights_quo <- rlang::sym("W_ij")
+  }
+  i_syms <-
+    setdiff(names(x), rlang::quo_name(weights_quo)) %>%
+    stringr::str_subset(pattern = "_i$") %>%
+    rlang::syms()
+  i_classes <-
+    x %>%
+    dplyr::select(rlang::UQS(i_syms)) %>%
+    purrr::map_chr(class)
+  i_group_by <- i_syms[i_classes != "list"]
+  j_syms <-
+    setdiff(names(x), rlang::quo_name(weights_quo)) %>%
+    stringr::str_subset(pattern = "_j$") %>%
+    rlang::syms()
+  j_classes <-
+    x %>%
+    dplyr::select(rlang::UQS(j_syms)) %>%
+    purrr::map_chr(class)
+  j_group_by <- j_syms[j_classes != "list"]
+  n <- dplyr::distinct(x, rlang::UQS(i_group_by)) %>% nrow()
+  x %>%
+    dplyr::group_by(rlang::UQS(i_group_by)) %>%
+    dplyr::mutate(E_i = mean(rlang::UQ(weights_quo))) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(rlang::UQS(j_group_by)) %>%
+    dplyr::mutate(E_j = mean(rlang::UQ(weights_quo))) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(
+      rlang::UQ(weights_quo) := (1/n) * rlang::UQ(weights_quo) / sqrt(.data$E_i * .data$E_j)
+    ) %>%
+    dplyr::select(-.data$E_i, -.data$E_j)
+}
+
 
 
 
