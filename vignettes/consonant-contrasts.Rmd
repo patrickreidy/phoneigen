@@ -150,6 +150,8 @@ that characterize the /s/-vs.-/ʃ/ and the /t/-vs.-/k/ contrast, respectively.
 
 
 
+
+
 ## Sibilant fricatives
 
 The sibilant fricatives /s, ʃ/ are articulated by raising the tongue toward the
@@ -268,15 +270,15 @@ differences that indicate talker sex are washed away.
 
 ```{r, echo = FALSE, results = "hide"}
 fig2_caption <- stringr::str_c(
-  "Figure 2: Distributions of skewness and centroid (raw: left panel,",
-  "normalized: right panel) computed from the sibilant fricatives'",
-  "excitation patterns. Point shape indicates target consonant",
-  "(/s/: o's, /ʃ/: x's). Color indicates talker sex (female: orange, male: blue).",
+  "Figure 2: Distributions of skewness and centroid (left panel: raw values,",
+  "right panel: normalized values) computed from the sibilant fricatives'",
+  "excitation patterns. Ellipses indicate 95% confidence regions,",
+  "assuming a bivariate t-distribution.",
   sep = " "
 ) 
 ```
 
-```{r, echo = FALSE, fig.cap = fig2_caption, fig.width = 7, fig.height = 3, fig.retina = 2, fig.align = "center"}
+```{r, echo = FALSE, fig.cap = fig2_caption, fig.width = 7, fig.height = 5, fig.retina = 2, fig.align = "center"}
 Centroid <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
   p <- p / sum(p)
   sum(p * x)
@@ -323,33 +325,43 @@ Moments <-
 
 M1M3_raw <- 
   Moments %>%
-  ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, 
-                                         y = Skewness,
-                                         shape = TargetC,
+  ggplot2::ggplot(mapping = ggplot2::aes(x = Centroid, y = Skewness,
+                                         shape = TargetC, linetype = TargetC,
                                          color = Sex)) +
   ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = c(0.3, 0.125), legend.direction = "horizontal") +
   ggplot2::xlab("Centroid (ERB)") +
   ggplot2::ylab("Skewness") +
-  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-  ggplot2::scale_color_manual(values = c("F" = "#E98300",
-                                         "M" = "#5BC6EB")) +
-  ggplot2::guides(shape = FALSE, color = FALSE) +
-  ggplot2::geom_point()
+  ggplot2::scale_x_continuous(position = "top") +
+  ggplot2::scale_shape_manual(name = "", 
+                              values = c("s" = 1, "S" = 5), 
+                              labels = c("/ʃ/", "/s/")) +
+  ggplot2::scale_color_manual(name = "", 
+                              values = c("F" = "#E98300", "M" = "#5BC6EB"),
+                              labels = c("Female", "Male")) +
+  ggplot2::scale_linetype_manual(name = "", 
+                                 values = c("s" = "dashed", "S" = "dotted"),
+                                 labels = c("/ʃ/", "/s/")) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
 
 M1M3_normed <-
   Moments %>%
   ggplot2::ggplot(mapping = ggplot2::aes(x = CentroidNormed, 
                                          y = SkewnessNormed,
-                                         shape = TargetC,
+                                         shape = TargetC, linetype = TargetC,
                                          color = Sex)) +
   ggplot2::theme_bw() +
   ggplot2::xlab("Normalized centroid (ERB)") +
   ggplot2::ylab("Normalized skewness") +
-  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-  ggplot2::scale_color_manual(values = c("F" = "#E98300",
-                                         "M" = "#5BC6EB")) +
-  ggplot2::guides(shape = FALSE, color = FALSE) +
-  ggplot2::geom_point()
+  ggplot2::scale_x_continuous(position = "top") +
+  ggplot2::scale_y_continuous(position = "right") +
+  ggplot2::scale_shape_manual(name = "", values = c("s" = 1, "S" = 5)) +
+  ggplot2::scale_color_manual(name = "", values = c("F" = "#E98300", "M" = "#5BC6EB")) +
+  ggplot2::scale_linetype_manual(name = "", values = c("s" = "dashed", "S" = "dotted")) +
+  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
 
 grid::grid.newpage()
 grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
@@ -461,7 +473,20 @@ word are in correspondence. If two productions `i` and `j` are
 connected, then the weight of their edge is equal to `exp(-Jeffrey(i, j))`,
 a measure of similarity that is valued within the interval `[0, 1]`. If two
 productions do not pass the tests indicated by `condition` then their edge
-weight is `0`.
+weight is `0`. 
+
+After initialization with `phoneigen::WeightEdgesIf`, the graph's edge weights
+are normalized, such that if `W(i,j)` is the initial weight between nodes `i`
+and `j`, then the normalized weight is 
+`(1/n) * W(i,j) / sqrt(E_x[W(i,x)] * E_x[W(j,x)])`, where `n` is the number of
+nodes in the graph and `E_x` is the expected value taken over nodes in the graph.
+This normalization is performed by the function `phoneigen::Normalize`. We
+mention that we have run the Laplacian eigenmaps analyses without such 
+normalization, and the qualitative pattern of the results are not affected by 
+excluding it. We include it here because it is necessary for certain applications
+of Laplacian eigenmaps (e.g., its out-of-vocabulary extension presented by
+Bengio, Paiment, Vincent, Delalleau, Le Roux & Ouimet, 2004), which are beyond
+the scope of this introductory tutorial.
 
 ```{r, collapse = TRUE}
 weighted <-
@@ -469,7 +494,8 @@ weighted <-
     x = squared,
     condition = Participant_i == Participant_j | Orthography_i == Orthography_j,
     values = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
-  )
+  ) %>%
+  phoneigen::Normalize()
 
 dplyr::select(weighted, Session_i, Orthography_i, Session_j, Orthography_j, W_ij)
 
@@ -477,7 +503,7 @@ dplyr::filter(weighted, Participant_i != Participant_j & Orthography_i != Orthog
   dplyr::select(Session_i, Orthography_i, Session_j, Orthography_j, W_ij)
 ```
 
-Once the weights are assigned to edges, the values of the weights variable,
+Once the (normalized) weights are assigned to edges, the values of the weights variable,
 `W_ij`, must be reshaped into a square matrix. This task is performed by
 the function `phoneigen::AdjacencyMatrix`, which takes as arguments a data frame,
 `x`; an unquoted list of variables that when suffixed with `_i` match
@@ -533,14 +559,13 @@ eigenmaps$Projection[[2]]
 
 Recall that the optimal `n`-dimensional embedding of the data is given by the 
 Laplacian eigenvectors associated with the `n` least non-zero eigenvalues. In
-the output of `phoneigen::LaplacianEigenmaps(adjacency_matrix)` printed above,
-none of the `Eigenvalue`s are `0`; however, it would be incorrect to include
-the first Laplacian eigenvector `e0` in the low-dimensional embedding.
-By construction, the graph used in this example is connected; hence, theory
-indicates that the least eigenvalue should be `0`. While the least
-eigenvalue above is not identically `0`, it is less than a reasonable
-threshold of `sqrt(.Machine$double.eps)`. Consequently, the first 
-Laplacian eigenvector is ignored, and only eigenvectors `e1` and above are 
+the output printed above, none of the `Eigenvalue`s are `0`; however, it would 
+be incorrect to include the first Laplacian eigenvector `e0` in the 
+low-dimensional embedding. By construction, the graph used in this example is 
+connected; hence, theory indicates that the least eigenvalue should be `0`. 
+While the least eigenvalue above is not identically `0`, its magnitude is less 
+than a reasonable threshold of `sqrt(.Machine$double.eps)`. Consequently, the 
+first Laplacian eigenvector is ignored, and only eigenvectors `e1` and above are 
 considered. Here, we stress that `phoneigen::LaplacianEigenmaps` does not
 suggest a threshold below which `Eigenvalue`s should be considered `0`.
 Furthermore, if the constructed graph is not connected, more than one
@@ -567,19 +592,27 @@ in a two-dimensional space defined by the first and second non-zero Laplacian
 eigenvectors. The first Laplacian eigenvector, `e1`, encodes the linguistic
 differences, yielding linearly separable clusters for /s/ and /ʃ/. The second
 Laplacian eigenvector, `e2`, encodes the indexical differences, indicating
+talker sex. Along the second eigenvector, the men's productions are more
+variable---an observation that could be more rigorously tested by collecting
+gender typicallity ratings from adults listening to these productions and then
+correlating the ratings against the values of the second eigenvector. While
+the Laplacian eigenmaps algorithm exploited some metadata about the excitation
+patterns (namely, the talker who produced the token and the word in which the
+token was produced), the clusters that are plotted in Figure 3 indicate that
+the algorithm generalized across the lexical identities of words to learn 
+segmental categories, and across talker identities to learn categories for
 talker sex.
 
 ```{r, echo = FALSE, results = "hide"}
 fig3_caption <- stringr::str_c(
   "Figure 3: Distributions of first and second non-zero Laplacian eigenvectors",
-  "learned from the sibilant fricatives' excitation patterns. Point shape",
-  "indicates target consonant (/s/: o's, /ʃ/: x's). Color indicates",
-  "talker sex (female: orange, male: blue).",
+  "learned from the sibilant fricatives' excitation patterns. Ellipses indicate",
+  "95% confidence regions, assuming a bivariate t-distribution.",
   sep = " "
 )
 ```
 
-```{r, echo = FALSE, fig.cap = fig3_caption, fig.width = 5, fig.height = 4, fig.retina = 2, fig.align = "center"}
+```{r, echo = FALSE, fig.cap = fig3_caption, fig.width = 7, fig.height = 5, fig.retina = 2, fig.align = "center"}
 reduced %>%
   tidyr::separate(X, into = c("Participant", "Session", "Trial", "Orthography")) %>%
   dplyr::left_join(
@@ -588,18 +621,282 @@ reduced %>%
     by = c("Participant", "Session", "Trial", "Orthography")
   ) %>%
   dplyr::mutate(Sex = substring(Session, first = 7, last = 7)) %>%
-  ggplot2::ggplot(mapping = ggplot2::aes(x = e1, 
-                                         y = e2,
-                                         shape = TargetC,
-                                         color = Sex)) +
+  ggplot2::ggplot(mapping = ggplot2::aes(x = e1,  y = e2, color = Sex, 
+                                         shape = TargetC, linetype = TargetC)) +
   ggplot2::theme_bw() +
-  ggplot2::xlab("First non-zero Laplacian eigenvector (e1)") +
-  ggplot2::ylab("Second non-zero Laplacian eigenvector (e2)") +
-  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 4)) +
-  ggplot2::scale_color_manual(values = c("F" = "#E98300",
-                                         "M" = "#5BC6EB")) +
-  ggplot2::guides(shape = FALSE, color = FALSE) +
-  ggplot2::geom_point(size = 2)
+  ggplot2::theme(legend.position = c(0.5, 0.125), legend.direction = "horizontal") +
+  ggplot2::xlab("First non-zero Laplacian eigenvector") +
+  ggplot2::ylab("Second non-zero Laplacian eigenvector") +
+  ggplot2::scale_x_reverse(position = "top") +
+  ggplot2::scale_shape_manual(name = "", 
+                              values = c("s" = 1, "S" = 5), 
+                              labels = c("/ʃ/", "/s/")) +
+  ggplot2::scale_color_manual(name = "", 
+                              values = c("F" = "#E98300", "M" = "#5BC6EB"),
+                              labels = c("Female", "Male")) +
+  ggplot2::scale_linetype_manual(name = "", 
+                                 values = c("s" = "dashed", "S" = "dotted"),
+                                 labels = c("/ʃ/", "/s/")) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
 ```
 
 
+
+### Linear discriminant analysis
+
+In order to compare the results of Laplacian eigenmaps with those of another 
+data-based dimensionality reduction algorithm, we apply linear discriminant
+analysis (LDA) to the excitation patterns computed from sibilant fricatives.
+The motivating idea behind this approach is to treat each component of an
+excitation pattern as a variable that is observed for each data point (i.e.,
+the first component of an excitation pattern is the amount of excitation in an
+auditory filter centered at 3 ERB). While the reader may be more familiar with
+LDA as a method for reducing the dimensionality of acoustic _features_ (e.g.,
+time-varying sequences of spectral moments: Forrest et al., 1988), 
+the phonetics literature is not without precedent where LDA has been applied to
+spectral representations directly (e.g., Cassidy & Harrington, 1995).
+
+A full description of the LDA algorithm falls outside of the scope of this 
+tutorial; hence, we assume the reader has some familiarity with it. Briefly,
+given `M` variables observed on data drawn from `N` classes, with `N << M`,
+the LDA algorithm an `N-1`-dimensional representation of the data. Therefore,
+an input to the LDA algorithm is the class membership of each data observation.
+The `LDA` function, defined below, implements a procedure for applying LDA to
+data. This function depends on the `caret::preProcess` function to first 
+transform the data by normalizing mean, variance, and skewness of the variables;
+and on the `MASS::lda` function to implement the core of the LDA algorithm.
+
+```{r}
+LDA <- function(classes, data) {
+  data_dims <- purrr::map_dbl(data, length)
+  if (dplyr::n_distinct(data_dims) != 1) {
+    stop("Data observations do not have the same dimensionality")
+  }
+  data_dim <- unique(data_dims)
+  n_classes <- dplyr::n_distinct(classes)
+  lda_data_raw <- 
+    data %>%
+    purrr::simplify() %>%
+    matrix(ncol = data_dim, byrow = TRUE) %>%
+    tibble::as_data_frame() %>%
+    purrr::set_names(stringr::str_c("D", 1:data_dim)) %>%
+    as.data.frame()
+  lda_preprocess <- caret::preProcess(x = lda_data_raw,
+                                      method = c("BoxCox", "center", "scale"))
+  lda_data <-
+    tibble::tibble(Class = factor(classes)) %>%
+    dplyr::bind_cols(predict(lda_preprocess, lda_data_raw)) %>%
+    as.data.frame()
+  suppressWarnings(
+    lda_fit <- MASS::lda(formula = Class ~ ., data = lda_data,
+                         prior = rep(1/n_classes, times = n_classes))
+  )
+  lda_embedding <-
+    predict(lda_fit, lda_data)[["x"]] %>%
+    tibble::as_data_frame() %>%
+    dplyr::bind_cols(tibble::tibble(Class = classes))
+  return(lda_embedding)
+}
+```
+
+We fit two LDA models to the `phoneigen::SibilantFricatives()` data set. In the
+first, the class of each data observation was determined by crossing the target
+consonant with the sex of the talker. This class typology was motivated by the
+categories that seem to have been learned by the first and second Laplacian
+eigenvectors, respectively, in Figure 3. The results of this four-class model
+are shown in the left panel of Figure 4. Four distinct clusters of data
+are readily apparent. Compared with Figure 3, there seems to be less separation 
+between the linguistic categories (/s/ vs. /ʃ/), but greater separation between
+the indexical categories (female vs. male).
+
+In the second model, the class of each data observation was determined by
+crossing the particiapnt's identifier with the orthography of the target word,
+which yielded 464 classes. This typology was motivated by the types of metadata
+that were input to the Laplacian eigenmaps algorithm in order to construct the
+adjacency matrix. The results of this second model are shown in the right panel
+of Figure 4. Here, the first linear discriminant fairly well differentiates
+the target consonant categories. However, the talker-sex categories are not
+as well differentiated as in either the previous LDA model or the Laplacian
+eigenmaps model.
+
+
+```{r, echo = FALSE}
+fig4_caption <- stringr::str_c(
+  "Figure 4: Distributions of first and second linear discriminants learned from",
+  "the sibilant fricatives' excitation patterns. The left panel shows linear",
+  "discriminants learned with 4 input classes derived by crossing the target consonant",
+  "and talker sex variables. The right panel shows linear discriminants learned with",
+  " 464 input classes derived by crossing participant with target word.",
+  "Ellipses indicate 95% confidence regions, assuming a bivariate t-distribution.",
+  sep = " "
+)
+```
+
+```{r, echo = FALSE, fig.cap = fig4_caption, fig.width = 7, fig.height = 5, fig.retina = 2, fig.align = "center"}
+sibilants_lda_sex_consonant <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::mutate(Sex = substring(Session, first = 7, last = 7),
+                Class = stringr::str_c(Sex, TargetC, sep = "_")) %>%
+  dplyr::pull(Class) %>%
+  LDA(data = dplyr::pull(phoneigen::SibilantFricatives(), ExcitationPattern)) %>%
+  tidyr::separate(col = Class, into = c("Sex", "TargetC")) %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = LD1, y = LD2, color = Sex, 
+                                         shape = TargetC, linetype = TargetC)) +
+  ggplot2::theme_bw() +
+  ggplot2::xlab("First linear discriminant") +
+  ggplot2::ylab("Second linear discriminant") +
+  ggplot2::scale_x_continuous(position = "top") +
+  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 5)) +
+  ggplot2::scale_color_manual(values = c("F" = "#E98300", "M" = "#5BC6EB")) +
+  ggplot2::scale_linetype_manual(values = c("s" = "dashed", "S" = "dotted")) +
+  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
+
+sibilants_lda_participant_orthography <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::mutate(Class = stringr::str_c(Participant, Orthography, sep = "_")) %>%
+  dplyr::pull(Class) %>%
+  LDA(data = dplyr::pull(phoneigen::SibilantFricatives(), ExcitationPattern)) %>%
+  tidyr::separate(col = Class, into = c("Participant", "Orthography")) %>%
+  dplyr::left_join(
+    dplyr::distinct(phoneigen::SibilantFricatives(),
+                    Participant, Session, Orthography, TargetC),
+    by = c("Participant", "Orthography")
+  ) %>%
+  dplyr::mutate(Sex = substring(Session, first = 7, last = 7)) %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = LD1, y = LD2, color = Sex, 
+                                         shape = TargetC, linetype = TargetC)) +
+  ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = c(0.55, 0.875), legend.direction = "horizontal") +
+  ggplot2::xlab("First linear discriminant") +
+  ggplot2::ylab("Second linear discriminant") +
+  ggplot2::scale_x_reverse(position = "top") +
+  ggplot2::scale_y_reverse(position = "right") +
+  ggplot2::scale_shape_manual(name = "", 
+                              values = c("s" = 1, "S" = 5), 
+                              labels = c("/ʃ/", "/s/")) +
+  ggplot2::scale_color_manual(name = "", 
+                              values = c("F" = "#E98300", "M" = "#5BC6EB"),
+                              labels = c("Female", "Male")) +
+  ggplot2::scale_linetype_manual(name = "", 
+                                 values = c("s" = "dashed", "S" = "dotted"),
+                                 labels = c("/ʃ/", "/s/")) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(sibilants_lda_sex_consonant, vp = grid::viewport(layout.pos.col = 1))
+print(sibilants_lda_participant_orthography, vp = grid::viewport(layout.pos.col = 2))
+```
+
+
+
+
+## Stop bursts
+
+
+### Laplacian eigenmaps
+
+```{r, eval = FALSE}
+phoneigen::StopBursts() %>%
+  phoneigen::CartesianSquare(
+    Participant, Session, Trial, Orthography, ExcitationPattern
+  ) %>%
+  phoneigen::WeightEdgesIf(
+    condition = Participant_i == Participant_j,
+    values = (1/6) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  ) %>%
+  phoneigen::WeightEdgesIf(
+    condition = Participant_i != Participant_j & Orthography_i == Orthography_j,
+    values = (5/6) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  ) %>%
+  phoneigen::Normalize() %>%
+  phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography) %>%
+  phoneigen::LaplacianEigenmaps() %>%
+  phoneigen::ReduceDimensions(e1, e2)
+```
+
+```{r, echo = FALSE}
+stop_bursts_reduced <-
+  phoneigen::StopBursts() %>%
+  phoneigen::CartesianSquare(
+    Participant, Session, Trial, Orthography, ExcitationPattern
+  ) %>%
+  phoneigen::WeightEdgesIf(
+    condition = Participant_i == Participant_j,
+    values = (1/6) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  ) %>%
+  phoneigen::WeightEdgesIf(
+    condition = Participant_i != Participant_j & Orthography_i == Orthography_j,
+    values = (5/6) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  ) %>%
+  phoneigen::Normalize() %>%
+  phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography) %>%
+  phoneigen::LaplacianEigenmaps() %>%
+  phoneigen::ReduceDimensions(e1, e2)
+```
+
+```{r, echo = FALSE}
+fig5_caption <- stringr::str_c(
+  "Figure 5:",
+  sep = " "
+)
+```
+
+```{r, echo = FALSE, fig.cap = fig5_caption, fig.width = 7, fig.height = 5, fig.retina = 2, fig.align = "center"}
+stop_bursts_reduced %>%
+  tidyr::separate(X, into = c("Participant", "Session", "Trial", "Orthography"), sep = "_") %>%
+  dplyr::left_join(
+    dplyr::select(phoneigen::StopBursts(),
+                  Participant, Session, Trial, Orthography, TargetC, TargetV),
+    by = c("Participant", "Session", "Trial", "Orthography")
+  ) %>%
+  dplyr::mutate(VowelPlace = ifelse(TargetV %in% c("i:", "I", "eI", "E", "@"),
+                                    "Front", "Back")) %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = -e1, y = e2, color = TargetC, 
+                                         shape = VowelPlace, linetype = VowelPlace)) +
+  ggplot2::theme_bw() +
+  ggplot2::xlab("First non-zero Laplacian eigenvector (e1)") +
+  ggplot2::ylab("Second non-zero Laplacian eigenvector (e2)") +
+  ggplot2::scale_shape_manual(values = c("Front" = 1, "Back" = 5)) +
+  ggplot2::scale_linetype_manual(values = c("Front" = "dashed", "Back" = "dotted")) +
+  ggplot2::scale_color_manual(values = c("th" = "#E98300", "kh" = "#008542")) +
+  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
+```
+
+
+
+### Linear discriminant analysis
+
+```{r, echo = FALSE}
+fig6_caption <- stringr::str_c(
+  "Figure 6:",
+  sep = " "
+)
+```
+
+```{r, echo = FALSE, fig.cap = fig6_caption, fig.width = 7, fig.height = 5, fig.retina = 2, fig.align = "center"}
+phoneigen::StopBursts() %>%
+  dplyr::mutate(VowelPlace = ifelse(TargetV %in% c("i:", "I", "eI", "E", "@"),
+                                    "Front", "Back"),
+                Class = stringr::str_c(VowelPlace, TargetC, sep = "_")) %>% 
+  dplyr::pull(Class) %>%
+  LDA(data = dplyr::pull(phoneigen::StopBursts(), ExcitationPattern)) %>%
+  tidyr::separate(col = Class, into = c("VowelPlace", "TargetC")) %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = LD1, y = LD2, color = TargetC, 
+                                         shape = VowelPlace, linetype = VowelPlace)) +
+  ggplot2::theme_bw() +
+  ggplot2::xlab("First linear discriminant (LD1)") +
+  ggplot2::ylab("Second linear discriminant (LD2)") +
+  ggplot2::scale_shape_manual(values = c("Front" = 1, "Back" = 5)) +
+  ggplot2::scale_linetype_manual(values = c("Front" = "dashed", "Back" = "dotted")) +
+  ggplot2::scale_color_manual(values = c("th" = "#E98300", "kh" = "#008542")) +
+  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
+```

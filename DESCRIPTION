@@ -16,11 +16,13 @@ Description: Functions for applying Laplacian Eigenmaps to acoustic data for
   structures for phonetic analyses". Journal of Phonetics.
 Depends: R (>= 3.4.0)
 Imports:
+  caret,
   dplyr,
   geigen,
   ggplot2,
   grid,
   magrittr,
+  MASS,
   purrr,
   rlang,
   stringr,
