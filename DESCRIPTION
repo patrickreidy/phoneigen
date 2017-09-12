@@ -18,6 +18,7 @@ Depends: R (>= 3.4.0)
 Imports:
   caret,
   dplyr,
+  e1071,
   geigen,
   ggplot2,
   grid,
