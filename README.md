@@ -20,21 +20,24 @@ structures for phonetic analyses". _Journal of Phonetics_.
 `phoneigen` may be installed directly from GitHub:
 
 ```r
-devtools::install_github("patrickreidy/phoneigen")
+devtools::install_github("patrickreidy/phoneigen", build_vignettes = TRUE)
 ```
+
+To install without the vignette, set `build_vignettes = FALSE` in the above or
+omit that argument.
 
 
 ## Data sets
 
-The vignettes apply Laplacian Eigenmaps to spectral representations computed
-from adults' productions of American English /s, S/ and /t, k/. For these
-demonstrations, the vignettes make use of two package-internal data sets,
-`sibilantFricatives` and `stopBursts`, which are `tibble`s that each comprise
-a list-column named `ExcitationPattern`, whose elements are 361-component 
-numeric vectors that represent the values of a psychoacoustic spectra computed
-from the consonant productions. These data sets are available upon package 
-installation, and can be accessed by calling `phoneigen::SibilantFricatives()`
-and `phoneigen::StopBursts()`.
+The vignette `consonant-contrasts` applies Laplacian Eigenmaps to spectral 
+representations computed from adults' productions of American English /s, S/ 
+and /t, k/. For these demonstrations, the vignettes make use of two 
+package-internal data sets, `sibilantFricatives` and `stopBursts`, which are 
+`tibble`s that each comprise a list-column named `ExcitationPattern`, whose 
+elements are 361-component numeric vectors that represent the values of a 
+psychoacoustic spectra computed from the consonant productions. These data sets 
+are available upon package installation, and can be accessed by calling 
+`phoneigen::SibilantFricatives()` and `phoneigen::StopBursts()`.
 
 The audio recordings of the consonant productions are available from the source
 package on GitHub. Each production was extracted, from a longer recording, with
