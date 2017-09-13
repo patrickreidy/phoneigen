@@ -329,7 +329,7 @@ M1M3_raw <-
                                          shape = TargetC, linetype = TargetC,
                                          color = Sex)) +
   ggplot2::theme_bw() +
-  ggplot2::theme(legend.position = c(0.3, 0.125), legend.direction = "horizontal") +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
   ggplot2::xlab("Centroid (ERB)") +
   ggplot2::ylab("Skewness") +
   ggplot2::scale_x_continuous(position = "top") +
@@ -337,7 +337,7 @@ M1M3_raw <-
                               values = c("s" = 1, "S" = 5), 
                               labels = c("/ʃ/", "/s/")) +
   ggplot2::scale_color_manual(name = "", 
-                              values = c("F" = "#E98300", "M" = "#5BC6EB"),
+                              values = c("F" = "#E98300", "M" = "#0039A6"),
                               labels = c("Female", "Male")) +
   ggplot2::scale_linetype_manual(name = "", 
                                  values = c("s" = "dashed", "S" = "dotted"),
@@ -352,14 +352,20 @@ M1M3_normed <-
                                          shape = TargetC, linetype = TargetC,
                                          color = Sex)) +
   ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
   ggplot2::xlab("Normalized centroid (ERB)") +
   ggplot2::ylab("Normalized skewness") +
   ggplot2::scale_x_continuous(position = "top") +
   ggplot2::scale_y_continuous(position = "right") +
-  ggplot2::scale_shape_manual(name = "", values = c("s" = 1, "S" = 5)) +
-  ggplot2::scale_color_manual(name = "", values = c("F" = "#E98300", "M" = "#5BC6EB")) +
-  ggplot2::scale_linetype_manual(name = "", values = c("s" = "dashed", "S" = "dotted")) +
-  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::scale_shape_manual(name = "", 
+                              values = c("s" = 1, "S" = 5), 
+                              labels = c("/ʃ/", "/s/")) +
+  ggplot2::scale_color_manual(name = "", 
+                              values = c("F" = "#E98300", "M" = "#0039A6"),
+                              labels = c("Female", "Male")) +
+  ggplot2::scale_linetype_manual(name = "", 
+                                 values = c("s" = "dashed", "S" = "dotted"),
+                                 labels = c("/ʃ/", "/s/")) +
   ggplot2::geom_point(size = 3) +
   ggplot2::stat_ellipse(type = "t", level = 0.95)
 
@@ -624,7 +630,7 @@ reduced %>%
   ggplot2::ggplot(mapping = ggplot2::aes(x = e1,  y = e2, color = Sex, 
                                          shape = TargetC, linetype = TargetC)) +
   ggplot2::theme_bw() +
-  ggplot2::theme(legend.position = c(0.5, 0.125), legend.direction = "horizontal") +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
   ggplot2::xlab("First non-zero Laplacian eigenvector") +
   ggplot2::ylab("Second non-zero Laplacian eigenvector") +
   ggplot2::scale_x_reverse(position = "top") +
@@ -632,7 +638,7 @@ reduced %>%
                               values = c("s" = 1, "S" = 5), 
                               labels = c("/ʃ/", "/s/")) +
   ggplot2::scale_color_manual(name = "", 
-                              values = c("F" = "#E98300", "M" = "#5BC6EB"),
+                              values = c("F" = "#E98300", "M" = "#0039A6"),
                               labels = c("Female", "Male")) +
   ggplot2::scale_linetype_manual(name = "", 
                                  values = c("s" = "dashed", "S" = "dotted"),
@@ -744,13 +750,19 @@ sibilants_lda_sex_consonant <-
   ggplot2::ggplot(mapping = ggplot2::aes(x = LD1, y = LD2, color = Sex, 
                                          shape = TargetC, linetype = TargetC)) +
   ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
   ggplot2::xlab("First linear discriminant") +
   ggplot2::ylab("Second linear discriminant") +
   ggplot2::scale_x_continuous(position = "top") +
-  ggplot2::scale_shape_manual(values = c("s" = 1, "S" = 5)) +
-  ggplot2::scale_color_manual(values = c("F" = "#E98300", "M" = "#5BC6EB")) +
-  ggplot2::scale_linetype_manual(values = c("s" = "dashed", "S" = "dotted")) +
-  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::scale_shape_manual(name = "", 
+                              values = c("s" = 1, "S" = 5), 
+                              labels = c("/ʃ/", "/s/")) +
+  ggplot2::scale_color_manual(name = "", 
+                              values = c("F" = "#E98300", "M" = "#0039A6"),
+                              labels = c("Female", "Male")) +
+  ggplot2::scale_linetype_manual(name = "", 
+                                 values = c("s" = "dashed", "S" = "dotted"),
+                                 labels = c("/ʃ/", "/s/")) +
   ggplot2::geom_point(size = 3) +
   ggplot2::stat_ellipse(type = "t", level = 0.95)
 
@@ -769,16 +781,16 @@ sibilants_lda_participant_orthography <-
   ggplot2::ggplot(mapping = ggplot2::aes(x = LD1, y = LD2, color = Sex, 
                                          shape = TargetC, linetype = TargetC)) +
   ggplot2::theme_bw() +
-  ggplot2::theme(legend.position = c(0.55, 0.875), legend.direction = "horizontal") +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
   ggplot2::xlab("First linear discriminant") +
   ggplot2::ylab("Second linear discriminant") +
   ggplot2::scale_x_reverse(position = "top") +
-  ggplot2::scale_y_reverse(position = "right") +
+  ggplot2::scale_y_continuous(position = "right") +
   ggplot2::scale_shape_manual(name = "", 
                               values = c("s" = 1, "S" = 5), 
                               labels = c("/ʃ/", "/s/")) +
   ggplot2::scale_color_manual(name = "", 
-                              values = c("F" = "#E98300", "M" = "#5BC6EB"),
+                              values = c("F" = "#E98300", "M" = "#0039A6"),
                               labels = c("Female", "Male")) +
   ggplot2::scale_linetype_manual(name = "", 
                                  values = c("s" = "dashed", "S" = "dotted"),
@@ -795,29 +807,94 @@ print(sibilants_lda_participant_orthography, vp = grid::viewport(layout.pos.col 
 
 
 
+
 ## Stop bursts
+
+The voiceless English stops /t, k/ are articulated by raising the tongue tip or
+body to make contact with the roof of the mouth and fully occlude the oral
+cavity. Sound is produced when the occlusion is released, causing a sudden
+drop in intraoral pressure and generating a transient acoustic burst. The
+place of articulation of the velar stop /k/ is subject to substantial vowel
+contextual effects: when produced before a front vowel as compared with a 
+back vowel, the occlusion is articulated at a much more anterior place.
+Indeed, the /t/-vs.-/k/ contrast may be described as a tongue-place contrast, 
+when these consonants occur before a back vowel, but as a tongue-posture contrast 
+(apical vs. laminal), before front vowels. In this example, we apply Laplacian 
+eigenmaps to spectral representations of stop bursts, and demonstrate that the 
+learned low-dimensional embedding reflects the two articulatory axes of the 
+/t/-vs.-/k/ contrast, namely, tongue place and tongue posture. 
+
 
 
 ### Laplacian eigenmaps
 
+The steps for applying Laplacian eigenmaps to excitation patterns computed from
+stop bursts follow much the same sequence as those for applying the algorithm
+to sibilant fricatives above. As such, we don't repeat much of the exposition
+that is offered above. Instead, we draw the readers attention to two points of 
+our Laplacian eigenmaps analysis of the stop bursts' excitation patterns. The
+first is syntactic in nature: the `phoneigen` functions may be chained together
+using the forward-pipe operator `%>%` from the `magrittr` package. This construct
+allows the user to pipe the component function calls together into a single
+`R` expression as is demonstrated in the code listing below, which makes for,
+in our opinion, more readable and secure code.
+
+The second is a more substantive difference in how the graph's edges are 
+weighted. Specifically, the graph construction below introduces an
+_alignment parameter_ `mu`, such that `0 < mu < 1`, which tunes the degree to
+which the Laplacian eigenmaps embedding emphasizes the edge weights assigned
+within each talker, or the edge weights assigned to productions of the same
+target word by different talkers. The alignment parameter value used below
+`mu = 1/6` gives greater weight to the across-talker alignment than to the 
+structure of the within-talker subgraphs. This value for `mu` was chosen based 
+on pilot work with a subset of the data presented here (Reidy, Beckman, Edwards,
+Munson & Johnson, 2017). 
+
 ```{r, eval = FALSE}
+mu <- 1/6
+
 phoneigen::StopBursts() %>%
   phoneigen::CartesianSquare(
     Participant, Session, Trial, Orthography, ExcitationPattern
   ) %>%
   phoneigen::WeightEdgesIf(
     condition = Participant_i == Participant_j,
-    values = (1/6) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+    values = mu * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
   ) %>%
   phoneigen::WeightEdgesIf(
     condition = Participant_i != Participant_j & Orthography_i == Orthography_j,
-    values = (5/6) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+    values = (1 - mu) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
   ) %>%
   phoneigen::Normalize() %>%
   phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography) %>%
   phoneigen::LaplacianEigenmaps() %>%
   phoneigen::ReduceDimensions(e1, e2)
 ```
+
+The two-dimensional representation of the stop bursts, given by the first and
+second non-zero Laplacian eigenvectors, is shown in Figure 5 below. Within this
+space, three clusters seem to emerge. For target /t/, the productions from
+front-vowel contexts melt into those from back-vowel contexts to form a single
+cluster. This single /t/ cluster is differentiated from the productions of
+target /k/ in back-vowel contexts, along the dimension of the first eigenvector;
+and from the productions of target /k/ in front-vowel contexts, along the
+second eigenvector. Furthermore, there is minimal overlap between any of the
+three categories: only 5 productions of front-vowel /k/ are contained within
+the convex hull of the target /t/ productions. 
+
+The spectral representations input to the algorithm are "static"
+in the sense that they were computed from a single window that spanned from
+5 ms before the burst to 20 ms after the burst. A static spectral representation
+of stop bursts conflicts with much work on the acoustics of stop bursts,
+which have argued for and developed features that represent time-varying changes
+to the spectral shape of the stop burst (e.g., Kewley-Port, 1983; Nossair &
+Zahorian, 1991; Marin, Pouplier & Harrington, 2010). Despite the input 
+representations not encoding any information about time-varying spectral change,
+the Laplacian eigenmaps algorithm seems able to learn a low-dimensional 
+representation for the /t/-vs.-/k/ contrast that reveals vowel-contextual 
+allophonic variation and that reflects the underlying dimensionality of the 
+articulatory system for producing these sounds.
+
 
 ```{r, echo = FALSE}
 stop_bursts_reduced <-
@@ -841,7 +918,9 @@ stop_bursts_reduced <-
 
 ```{r, echo = FALSE}
 fig5_caption <- stringr::str_c(
-  "Figure 5:",
+  "Figure 5: Distributions of the first and second non-zero Laplacian eigenvectors",
+  "learned from the stop bursts' excitation patterns. Ellipses indicate 95%",
+  "confidence regions, assuming a bivariate t-dstribution.",
   sep = " "
 )
 ```
@@ -856,15 +935,19 @@ stop_bursts_reduced %>%
   ) %>%
   dplyr::mutate(VowelPlace = ifelse(TargetV %in% c("i:", "I", "eI", "E", "@"),
                                     "Front", "Back")) %>%
-  ggplot2::ggplot(mapping = ggplot2::aes(x = -e1, y = e2, color = TargetC, 
+  ggplot2::ggplot(mapping = ggplot2::aes(x = e1, y = e2, color = TargetC, 
                                          shape = VowelPlace, linetype = VowelPlace)) +
   ggplot2::theme_bw() +
-  ggplot2::xlab("First non-zero Laplacian eigenvector (e1)") +
-  ggplot2::ylab("Second non-zero Laplacian eigenvector (e2)") +
-  ggplot2::scale_shape_manual(values = c("Front" = 1, "Back" = 5)) +
-  ggplot2::scale_linetype_manual(values = c("Front" = "dashed", "Back" = "dotted")) +
-  ggplot2::scale_color_manual(values = c("th" = "#E98300", "kh" = "#008542")) +
-  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
+  ggplot2::xlab("First non-zero Laplacian eigenvector") +
+  ggplot2::ylab("Second non-zero Laplacian eigenvector") +
+  ggplot2::scale_x_reverse(position = "top") +
+  ggplot2::scale_shape_manual(name = "", values = c("Front" = 1, "Back" = 5),
+                              labels = c("Back", "Front")) +
+  ggplot2::scale_linetype_manual(name = "", values = c("Front" = "dashed", "Back" = "dotted"),
+                                 labels = c("Back", "Front")) +
+  ggplot2::scale_color_manual(name = "", values = c("th" = "#E98300", "kh" = "#008542"),
+                              labels = c("/k/", "/t/")) +
   ggplot2::geom_point(size = 3) +
   ggplot2::stat_ellipse(type = "t", level = 0.95)
 ```
@@ -873,15 +956,42 @@ stop_bursts_reduced %>%
 
 ### Linear discriminant analysis
 
+As with the sibilant fricatives, we compare the performance of Laplacian 
+eigenmaps on the stop bursts to that of linear discriminant analysis (LDA). 
+Again, there seem to be two reasonable choices for the class typology that is
+input to the LDA algorithm: first, the 4-class typology got by crossing
+target consonant and vowel context (front vs. back) variables; second, the
+512-class typology got by crossing participant and target word variables.
+Figure 6 shows the two-dimensional embedding determined by the first and second
+linear discriminants learned from each of these two class typologies. Both
+panels exhibit patterns that are qualitatively similar to what was observed 
+above in Figure 5: productions of /t/ are differentiated from productions of
+back-vowel-/k/ along the first linear discriminant; productions of /t/ are
+differentiated from front-vowel-/k/ along the second linear discriminant.
+Though, as would be expected, the separation along the second linear discriminant
+is noticeably better in the left panel of Figure 6, where the class typology 
+input to LDA matches the categories expected to be resolved by the algorithm.
+Finally, we note that compared with the results of Laplacian eigenmaps, which 
+takes as input no explicit information about the number of phonetic categories,
+the 4-class LDA model yielded poorer separation between phonetic categories
+observed in adult speech.
+
 ```{r, echo = FALSE}
 fig6_caption <- stringr::str_c(
-  "Figure 6:",
+  "Figure 6: Distributions of first and second linear discriminants learned from",
+  "the stop bursts' excitation patterns. The left panel shows linear discriminants",
+  "learned with 4 input classes derived by crossing the target consonant and vowel",
+  "context (front vowel vs. back vowel) variables. The right panel shows linear", 
+  "discriminants learned with 512 input classes derived by crossing the participant and",
+  "target word variables. Ellipses indicate 95% confidence regions, assuming a bivariate",
+  "t-distribution.",
   sep = " "
 )
 ```
 
 ```{r, echo = FALSE, fig.cap = fig6_caption, fig.width = 7, fig.height = 5, fig.retina = 2, fig.align = "center"}
-phoneigen::StopBursts() %>%
+stops_lda_consonant_vowel <-
+  phoneigen::StopBursts() %>%
   dplyr::mutate(VowelPlace = ifelse(TargetV %in% c("i:", "I", "eI", "E", "@"),
                                     "Front", "Back"),
                 Class = stringr::str_c(VowelPlace, TargetC, sep = "_")) %>% 
@@ -891,12 +1001,51 @@ phoneigen::StopBursts() %>%
   ggplot2::ggplot(mapping = ggplot2::aes(x = LD1, y = LD2, color = TargetC, 
                                          shape = VowelPlace, linetype = VowelPlace)) +
   ggplot2::theme_bw() +
-  ggplot2::xlab("First linear discriminant (LD1)") +
-  ggplot2::ylab("Second linear discriminant (LD2)") +
-  ggplot2::scale_shape_manual(values = c("Front" = 1, "Back" = 5)) +
-  ggplot2::scale_linetype_manual(values = c("Front" = "dashed", "Back" = "dotted")) +
-  ggplot2::scale_color_manual(values = c("th" = "#E98300", "kh" = "#008542")) +
-  ggplot2::guides(shape = FALSE, color = FALSE, linetype = FALSE) +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
+  ggplot2::xlab("First linear discriminant") +
+  ggplot2::ylab("Second linear discriminant") +
+  ggplot2::scale_x_continuous(position = "top") +
+  ggplot2::scale_shape_manual(name = "", values = c("Front" = 1, "Back" = 5),
+                              labels = c("Back", "Front")) +
+  ggplot2::scale_linetype_manual(name = "", values = c("Front" = "dashed", "Back" = "dotted"),
+                                 labels = c("Back", "Front")) +
+  ggplot2::scale_color_manual(name = "", values = c("th" = "#E98300", "kh" = "#008542"),
+                              labels = c("/k/", "/t/")) +
   ggplot2::geom_point(size = 3) +
   ggplot2::stat_ellipse(type = "t", level = 0.95)
+
+stops_lda_participant_orthography <-
+  phoneigen::StopBursts() %>%
+  dplyr::mutate(Class = stringr::str_c(Participant, Orthography, sep = "_")) %>% 
+  dplyr::pull(Class) %>%
+  LDA(data = dplyr::pull(phoneigen::StopBursts(), ExcitationPattern)) %>%
+  tidyr::separate(col = Class, into = c("Participant", "Orthography"), sep = "_") %>%
+  dplyr::left_join(
+    dplyr::distinct(phoneigen::StopBursts(),
+                    Participant, Orthography, TargetC, TargetV),
+    by = c("Participant", "Orthography")
+  ) %>%
+  dplyr::mutate(VowelPlace = ifelse(TargetV %in% c("i:", "I", "eI", "E", "@"), 
+                                    "Front", "Back")) %>%
+  ggplot2::ggplot(mapping = ggplot2::aes(x = LD1, y = LD2, color = TargetC, 
+                                         shape = VowelPlace, linetype = VowelPlace)) +
+  ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
+  ggplot2::xlab("First linear discriminant") +
+  ggplot2::ylab("Second linear discriminant") +
+  ggplot2::scale_x_reverse(position = "top") +
+  ggplot2::scale_y_continuous(position = "right") +
+  ggplot2::scale_shape_manual(name = "", values = c("Front" = 1, "Back" = 5),
+                              labels = c("Back", "Front")) +
+  ggplot2::scale_linetype_manual(name = "", values = c("Front" = "dashed", "Back" = "dotted"),
+                                 labels = c("Back", "Front")) +
+  ggplot2::scale_color_manual(name = "", values = c("th" = "#E98300", "kh" = "#008542"),
+                              labels = c("/k/", "/t/")) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::stat_ellipse(type = "t", level = 0.95)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(stops_lda_consonant_vowel, vp = grid::viewport(layout.pos.col = 1))
+print(stops_lda_participant_orthography, vp = grid::viewport(layout.pos.col = 2))
 ```
