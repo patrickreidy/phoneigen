@@ -512,16 +512,16 @@ dplyr::filter(weighted, Participant_i != Participant_j & Orthography_i != Orthog
 Once the (normalized) weights are assigned to edges, the values of the weights variable,
 `W_ij`, must be reshaped into a square matrix. This task is performed by
 the function `phoneigen::AdjacencyMatrix`, which takes as arguments a data frame,
-`x`; an unquoted list of variables that when suffixed with `_i` match
-variable names in `x`; and an optional unquoted variable name, `weights`,
-which should match the variable in `x` whose values denote the edge
-weights of the graph (if `weights` is missing at call time, then the
-name of the weights variable is assumed to be `W_ij`). The row and column 
+`x`; an optional list of unquoted variables that when suffixed with `_i` match
+variable names in `x` (if this list of unquoted variables is missing at call time,
+then the variable names are inferred from the names of `x`); and an optional 
+unquoted variable, `weights`, which should match the variable in `x` whose 
+values denote the edge weights of the graph (if `weights` is missing at call time, 
+then the name of the weights variable is assumed to be `W_ij`). The row and column 
 names of the resulting matrix are determined by pasting together the values of 
 the unquoted variables provided at call time. Furthermore, to ensure that the
 resulting matrix is symmetrix, the `phoneigen::AdjacencyMatrix` arranges the 
-rows of `x` according to the order of unquoted variables provided at call
-time.
+rows of `x` according to the order of unquoted variables provided at call time.
 
 ```{r, collapse = TRUE}
 adjacency_matrix <-
@@ -529,6 +529,10 @@ adjacency_matrix <-
     x = weighted, 
     Participant, Session, Trial, Orthography
   )
+
+# Equivalent to:
+# adjacency_matrix <-
+#   phoneigen::AdjacencyMatrix(x = weighted)
 
 isSymmetric(adjacency_matrix)
 
@@ -866,7 +870,7 @@ phoneigen::StopBursts() %>%
     values = (1 - mu) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
   ) %>%
   phoneigen::Normalize() %>%
-  phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography) %>%
+  phoneigen::AdjacencyMatrix() %>%
   phoneigen::LaplacianEigenmaps() %>%
   phoneigen::ReduceDimensions(e1, e2)
 ```
@@ -911,7 +915,7 @@ stop_bursts_reduced <-
     values = (5/6) * exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
   ) %>%
   phoneigen::Normalize() %>%
-  phoneigen::AdjacencyMatrix(Participant, Session, Trial, Orthography) %>%
+  phoneigen::AdjacencyMatrix() %>%
   phoneigen::LaplacianEigenmaps() %>%
   phoneigen::ReduceDimensions(e1, e2)
 ```
