@@ -11,8 +11,6 @@
 #' @param ... Unquoted names of variables in \code{x}. These are first
 #'   \code{dplyr::select}ed from \code{x}, and only these variables are
 #'   square with \code{tidyr::crossing}.
-#' @param weights An optional unquoted name of a weights variable.
-#'   Default value is \code{rlang::missing_arg()}, which
 #'
 #' @return A \code{\link[tibble]{tibble}} whose rows denote the values of the
 #'   Cartesian production of \code{x} with itself. If \code{x} has \code{n}
@@ -25,16 +23,12 @@
 #'   the Cartesian square are ordered.
 #'
 #' @export
-CartesianSquare <- function(x, ..., weights = rlang::missing_arg()) {
+CartesianSquare <- function(x, ...) {
   vars <- rlang::quos(...)
   x <- dplyr::select(x, rlang::UQS(vars))
   i <- purrr::set_names(x, nm = stringr::str_c(names(x), "i", sep = "_"))
   j <- purrr::set_names(x, nm = stringr::str_c(names(x), "j", sep = "_"))
   square <- tidyr::crossing(i, j)
-  weights_name <- rlang::quo_name(rlang::enquo(weights))
-  if (weights_name != "rlang::missing_arg()") {
-    square <- dplyr::mutate(square, rlang::UQ(weights_name) := 0)
-  }
   return(square)
 }
 
@@ -46,35 +40,35 @@ CartesianSquare <- function(x, ..., weights = rlang::missing_arg()) {
 #' a \code{\link{CartesianSquare}} data frame or tibble.
 #'
 #' @param x A data frame or \code{\link[tibble]{tibble}}.
-#' @param weights An unquoted name of the output variable where the weights are
-#'   populated.
-#' @param condition An unquoted expression that, within \code{x}, evaluates to
+#' @param edges An unquoted expression that, within \code{x}, evaluates to
 #'   a logical vector.
-#' @param values An unquoted expression that, within \code{x}, evaluates to a
-#'   numeric vector. The values of the \code{name} variable when
-#'   \code{condition} evaluates to \code{TRUE}.
+#' @param weights An unquoted expression that, within \code{x}, evaluates to a
+#'   numeric vector--the values of the \code{name} variable when
+#'   \code{edges} evaluates to \code{TRUE}.
+#' @param name An unquoted name of the output variable where the weights are
+#'   populated.
 #'
 #' @return A tibble that is like \code{x} except that it has a variable
-#'   \code{name} whose values are determined by \code{condition} and
+#'   \code{name} whose values are determined by \code{edges} and
 #'   \code{weights}.
 #'
 #' @export
-WeightEdgesIf <- function(x, weights = rlang::missing_arg(), condition, values) {
-  weights_quo <- rlang::enquo(weights)
-  if (rlang::quo_name(weights_quo) == "rlang::missing_arg()") {
-    weights_quo <- rlang::sym("W_ij")
+WeightEdgesIf <- function(x, edges, weights, name = rlang::missing_arg()) {
+  var_quo <- rlang::enquo(name)
+  if (rlang::quo_name(var_quo) == "rlang::missing_arg()") {
+    var_quo <- rlang::sym("W_ij")
   }
-  weights_name <- rlang::quo_name(weights_quo)
-  condition_quo <- rlang::enquo(condition)
-  values_quo <- rlang::enquo(values)
-  if (! (weights_name %in% names(x))) {
-    x <- dplyr::mutate(x, rlang::UQ(weights_name) := 0)
+  var_name <- rlang::quo_name(var_quo)
+  edges_quo <- rlang::enquo(edges)
+  weights_quo <- rlang::enquo(weights)
+  if (! (var_name %in% names(x))) {
+    x <- dplyr::mutate(x, rlang::UQ(var_name) := 0)
   }
   dplyr::mutate(
     x,
-    rlang::UQ(weights_quo) := ifelse(rlang::eval_tidy(condition_quo, data = x),
-                                     rlang::eval_tidy(values_quo, data = x),
-                                     rlang::eval_tidy(weights_quo, data = x))
+    rlang::UQ(var_quo) := ifelse(rlang::eval_tidy(edges_quo, data = x),
+                                 rlang::eval_tidy(weights_quo, data = x),
+                                 rlang::eval_tidy(var_quo, data = x))
   )
 }
 
@@ -136,13 +130,13 @@ Normalize <- function(x, weights = rlang::missing_arg()) {
 #' matrix.
 #'
 #' @param x A data frame or \code{\link[tibble]{tibble}}.
+#' @param weights The unquoted name of a numeric column in \code{x} whose values
+#'   will be shaped into a square adjacency matrix.
 #' @param ... Unquoted basenames that are used to arrange the rows of \code{x}
 #'   and to form the rownames of the returned matrix. For example,
 #'   if \code{... = a, b, c}, then the rows of \code{x} are first arranged
 #'   by \code{a_i, b_i, c_i, a_j, b_j, c_j}; and the row names of the returned
 #'   matrix match the pattern \code{"{a}_{b}_{c}"}.
-#' @param weights The unquoted name of a numeric column in \code{x} whose values
-#'   will be shaped into a square adjacency matrix.
 #'
 #' @return A numeric matrix.
 #'

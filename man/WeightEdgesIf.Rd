@@ -4,24 +4,24 @@
 \alias{WeightEdgesIf}
 \title{Weight the Edges Between Nodes}
 \usage{
-WeightEdgesIf(x, weights = rlang::missing_arg(), condition, values)
+WeightEdgesIf(x, edges, weights, name = rlang::missing_arg())
 }
 \arguments{
 \item{x}{A data frame or \code{\link[tibble]{tibble}}.}
 
-\item{weights}{An unquoted name of the output variable where the weights are
-populated.}
-
-\item{condition}{An unquoted expression that, within \code{x}, evaluates to
+\item{edges}{An unquoted expression that, within \code{x}, evaluates to
 a logical vector.}
 
-\item{values}{An unquoted expression that, within \code{x}, evaluates to a
-numeric vector. The values of the \code{name} variable when
-\code{condition} evaluates to \code{TRUE}.}
+\item{weights}{An unquoted expression that, within \code{x}, evaluates to a
+numeric vector--the values of the \code{name} variable when
+\code{edges} evaluates to \code{TRUE}.}
+
+\item{name}{An unquoted name of the output variable where the weights are
+populated.}
 }
 \value{
 A tibble that is like \code{x} except that it has a variable
-  \code{name} whose values are determined by \code{condition} and
+  \code{name} whose values are determined by \code{edges} and
   \code{weights}.
 }
 \description{

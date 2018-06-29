@@ -4,7 +4,7 @@
 \alias{CartesianSquare}
 \title{Cartesian Square}
 \usage{
-CartesianSquare(x, ..., weights = rlang::missing_arg())
+CartesianSquare(x, ...)
 }
 \arguments{
 \item{x}{A data frame or \code{\link[tibble]{tibble}}.}
@@ -12,9 +12,6 @@ CartesianSquare(x, ..., weights = rlang::missing_arg())
 \item{...}{Unquoted names of variables in \code{x}. These are first
 \code{dplyr::select}ed from \code{x}, and only these variables are
 square with \code{tidyr::crossing}.}
-
-\item{weights}{An optional unquoted name of a weights variable.
-Default value is \code{rlang::missing_arg()}, which}
 }
 \value{
 A \code{\link[tibble]{tibble}} whose rows denote the values of the
