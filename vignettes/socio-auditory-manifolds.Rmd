@@ -1,0 +1,1228 @@
+---
+title: "Socio-auditory Manifolds"
+author: "Patrick F. Reidy"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(magrittr)
+library(phoneigen)
+library(rlang)
+
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE
+)
+```
+
+```{r echo = FALSE}
+# Define functions for computing spectral moments.
+Centroid <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
+  p <- p / sum(p)
+  sum(p * x)
+}
+
+StdDeviation <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
+  p <- p / sum(p)
+  sqrt(sum(p * (x - Centroid(p, x))^2))
+}
+
+Skewness <- function(p, x = seq(from = 3, to = 39, by = 0.1)) {
+  p <- p / sum(p)
+  sum(p * ((x - Centroid(p, x)) / StdDeviation(p, x))^3)
+}
+```
+
+
+This vignette demonstrates how to use functions from the `phoneigen` package in
+order to compute low-dimensional phonetic representations of instances of the
+voiceless sibilant fricatives /s/ and /ʃ/ produced by native English-speaking
+adults and native English-acquiring two- and three-year-old children. These
+consonants are articulated by raising the tongue toward the roof of the mouth,
+so as to form a narrow constriction in the oral cavity. Turbulence noise sources
+are generated when the air flowing through this linguopalatal constriction
+becomes turbulent and when the turbulent jet impinges on the teeth downstream
+from the constriction. These noise sources excite the cavity anterior to the
+constriction. Consequently, the difference in place of articulation between
+sibilant fricatives is represented in the distribution of energy in their 
+respective spectra: e.g., in an adult's fluent productions, the more anterior
+place of articulation for /s/, compared with /ʃ/, entails a smaller front-cavity
+volume and thus resonances at higher frequencies (see Figure).
+
+While an energy spectrum is a convenient representation that is easily computed
+from the frication noise of a sibilant, one problem posed by such a representation
+is its high dimensionality (e.g., a spectrum estimated from a 20 ms window of
+frication noise sampled at 44.1 kHz will be a 441-dimensional vector). In the
+examples that follow, high-dimensional representations of /s/ and /ʃ/ are mapped
+to a low-dimensional representation that denotes the phonetic differences in
+place of articulation between these fricatives. Moreover, this mapping is
+learned by constructing a _socio-auditory manifold_, a graph structure that
+represents auditory-acoustic properties of the high-dimensional spectral
+representations of the speech data within a superposing social network that
+links the speakers who produced the tokens of /s/ and /ʃ/. The goals of this
+vignette are: first, to demonstrate how to compose a sequence of functions from
+ the `phoneigen` package in order to take a data set comprising high-dimensional
+observations as input, construct a socio-auditory manifold, and derive a 
+low-dimensional representation as output; and, second, to demonstrate that the
+derived low-dimensional representation depends crucially on the structure of 
+the socio-auditory manifold.
+
+
+
+## Overview of the data set
+
+```{r, include = FALSE}
+n_participants <- function(...) {
+  .filter_vars <- quos(...)
+  phoneigen::SibilantFricatives() %>%
+  dplyr::filter(!!!.filter_vars) %>%
+    dplyr::distinct(Participant) %>%
+    nrow()
+}
+n_men <- n_participants(Adult, !Female)
+n_women <- n_participants(Adult, Female)
+n_adults <- n_men + n_women
+n_boys <- n_participants(!Adult, !Female)
+n_girls <- n_participants(!Adult, Female)
+n_children <- n_boys + n_girls
+ages <- 
+  phoneigen::SibilantFricatives() %>%
+  dplyr::filter(!is.na(Age)) %>%
+  dplyr::distinct(Participant, Age) %>%
+  dplyr::pull(Age)
+```
+
+The productions of /s/ and /ʃ/ used in this vignette were provided by the 
+Learning to Talk Project (NIDCD grant R01-02932; Principal Investigators: 
+Jan Edwards, Mary E. Beckman, and Benjamin Munson), a longitudinal study of 
+phonological and lexical development in preschool children. As a part of this 
+project, adult speakers were also tested in order to assess the adult production
+norms in the ambient community in which the child participants were being raised.
+Additionally, the data and some of the results reported here have been 
+previously reported in Reidy, Beckman, Edwards, and Munson (2017).
+
+The data set is accessed by calling:
+```{r}
+SibilantFricatives()
+```
+This returns a `tibble` object that comprises 
+`r nrow(phoneigen::SibilantFricatives())` observations on 
+`r ncol(phoneigen::SibilantFricatives())` variables. These productions of target 
+/s/ and /ʃ/ were elicited from `r n_children` children 
+(`r n_girls` girls, `r n_boys` boys), between the ages of `r range(ages)[1]` 
+and `r range(ages)[2]` months, and `r n_adults` adults (`r n_women` women, 
+`r n_men` men) with a picture-prompted word repetition task. The test words for
+this task were selected in order to elicit multiple attempts of each target
+fricative in word-initial position, across a variety of following vowel contexts.
+On each trial, a picture of the referent of the test word was displayed on a 
+computer screen, and then an audio recording of the test word, spoken by a 
+female adult native speaker, was played over loudspeakers. The participants
+were asked to repeat, into a microphone, the word that they heard. Each 
+experiment session was recorded digitally at 44.1 kHz sampling rate and 16 bit
+resolution. Each attempted production of a target was transcribed by one of a
+team of phonetically-trained research assistants. For those productions whose
+manner was judged to be a sibilant fricative, the place of articulation was 
+denoted along a four-point scale: [s], [s]:[ʃ] (intermediate, but closwer to
+[s]), [ʃ]:[s] (intermediate, but closer to [ʃ]), and [ʃ]. If a production was
+judged to be a sibilant fricative, then the research assistant also manually
+annotated the onset of frication and the onset of voicing.
+
+Each production by a child that was transcribed as a sibilant fricative 
+(including substitution errors, such as [s] for target /ʃ/) was used as a
+stimulus in a visual-analog-scale (VAS) perceptual rating task: the initial CV
+sequence was extracted, beginning 5 ms prior to the onset of frication and 
+ending 150 ms after the onset of voicing in the vowel. Batches of these stimuli
+were played to native adult English-speaking listeners who were asked to rate
+the frication noise in a production by clicking some point on a double-headed 
+arrow that was presented visually on a computer monitor. This arrow was anchored
+by the text "the 's' sound" at one end and by "the 'sh' sound" at the other.
+The click location in pixels was logged automatically, and the pixel locations
+were normalized to fall within the [0,1] range. Each production was rated by at
+least 15 listeners. The mean VAS ratings for the children's productions,
+averaged across listeners, are found in the `Rating` column of the data set; 
+these ratings fall within the [0,1] interval, with lesser ratings indicating 
+more [s]-like sounds and greater ratings indicating more [ʃ]-like sounds.
+
+Comprehensive documentation for the data set is available by calling:
+```{r}
+help(SibilantFricatives, phoneigen)
+```
+
+Here, we call attention to a handful of variables that will be used below when
+constructing the socio-auditory manifolds. Each production is uniquely 
+identified by its `Session` and `Trial` within the session. The speaker of each
+production is identified by `Participant`; adult participants may be associated
+with two `Session`s. The target word used to elicit the production is denoted
+by `Orthography`, and some target words were elicited multiple times in a given
+`Session`. The mean VAS ratings for the children's productions are found in the
+`Rating` variable; these ratings fall within [0,1], with lesser ratings
+indicating more [s]-like sounds and greater ratings indicating more [ʃ]-like
+sounds.
+
+Finally, the `ExcitationPattern` variable in the data set is a list whose
+elements are 361-component numeric vectors. Each such vector denotes the values
+of an _excitation pattern_, whose values were derived by passing an input sound 
+through a filter bank that comprised 361 fourth-order gammatone filters. The 
+center frequencies of these filters were evenly spaced from 3 to 39 (i.e., 0.1 
+inter-channel separation) along the equivalent rectangular bandwidth (ERB) scale, 
+a logarithmic transformation of the physical hertz scale that models the 
+tonotopic mapping of the basilar membrane. Each channel in this filter bank can 
+be thought of as modeling the frequency tuning properties of a narrow 
+cross-section of the basilar membrane, and the filter bank, as a whole, may be 
+thought of as a sequence of such cross-sections spaced evenly along the length 
+of the basilar membrane. An excitation pattern results from applying this filter 
+bank to an input sound, summing the energy within the signal output by each 
+channel, and associating those energy values to the center frequencies of the 
+channels in the filter bank. In what follows, we take the support of excitation 
+patterns as fixed, and thus represent each excitation pattern as the 
+361-dimensional vector of its values.
+
+The `SibilantFricatives()` data set exemplifies how data should be structured
+when using the `phoneigen` package: the observations of high-dimensional data
+(here, excitation patterns) occur as a list-column of numeric vectors (here,
+the `ExcitationPattern` variable); metadata about the high-dimensional data
+(here, the talker, the target word, etc.) occur as columns of basic data types
+(here, `Participant`, `Orthograph`, etc.).
+
+
+
+## A socio-auditory manifold for adults' productions
+
+As a 361-dimensional vector, each excitation pattern may be construed as a point
+in $\mathbb{R}^{\mathsf{361}}$. In traditional phonetic analyses, the 
+dimensionality of each excitation pattern would be reduced by mapping it
+through a small number of functions that were chosen _a priori_---e.g., 
+functions that compute values of shape parameters (such as spectral moments)
+or that project onto a different basis (such as the discrete cosine transform).
+By contrast, the current method learns such a mapping into a low-dimensional
+space (say, $\mathbb{R}^{\mathsf{1}}$ or $\mathbb{R}^{\mathsf{2}}$) in a 
+data-dependent manner by constructing a socio-auditory manifold, which involves
+the following five steps:
+
+1. uniquely identify each excitation pattern as a node in the socio-auditory
+   manifold;
+1. define a symmetric, nonnegative function that takes two excitation
+   patterns as inputs and outputs the divergence or distance between them;
+1. add edges between excitation patterns produced by a given speaker, in order
+   to construct speaker-internal submanifolds, and then weight these edges
+   according to the function defined in step (2);
+1. add edges between excitation patterns produced by different speakers, in 
+   order to align or register the multiple speaker-internal submanifolds into
+   a (connected) socio-auditory manifold, and the weight these edges;
+1. compute the Laplacian eigenvectors of the constructed socio-auditory
+   manifold.
+
+
+**Step 1: Identify the nodes in the manifold**
+
+For the `SibilantFricatives()` data set, the first step is accomplished
+automatically by virtue of the `Session` and `Trial` variables, which together
+identify each excitation pattern. In general, having one or more variables in
+a data set that jointly identify the high-dimensional data observations is
+necessary for the bookkeeping involved when constructing a socio-auditory
+manifold. In particular, to add edges between nodes it is necessary to 
+take the Cartesian square over the set of nodes in the socio-auditory manifold,
+all while keeping track of multiple data and metadata variables associated
+with each node. The function `CartesianSquare` facilitates this bookkeeping.
+When calling `CartesianSquare` it is vital to include in the comma-separated
+list of unquoted variables, all variables that are necessary for identifying
+nodes and for adding and weighting edges between nodes in the socio-auditory
+manifold. For the adults' data, these variables are `Participant`, `Session`,
+`Trial`, `Orthography`, and `ExcitationPattern`:
+```{r}
+adults_node_pairs <-
+  CartesianSquare(x = dplyr::filter(SibilantFricatives(), Adult), 
+                  Participant, Session, Trial, Orthography, ExcitationPattern)
+
+adults_node_pairs
+```
+
+
+**Step 2: Define a distance function over the nodes in the manifold**
+
+The second step requires us to choose a distance function that will be used
+to compare two excitation patterns. A great number of functions are viable
+candidates; for example, the Euclidean and Manhattan distances may be familiar 
+to the reader, and Deza & Deza (2009) presents an encyclopedic catalog of 
+distance functions. Previous applications of manifold learning to speech data 
+have had success with the Euclidean distance (e.g., Jansen & Niyogi, 2007; 
+Plummer et al., 2010); however, in this example, we choose to use an 
+information-theoretic distance, the _Jeffrey divergence_[^jd], which is defined 
+on two vectors $x_i$ and $x_j$ whose values have respectively been normalized 
+so as to sum to 1: 
+$$\mathsf{Jeffrey}(x_i, x_j) = \sum_n (x_i[n]-x_j[n]) \cdot \log\left(\frac{x_i[n]}{x_j[n]}\right)$$
+
+While different distance functions have proven useful on comparable 
+high-dimensional representations of speech data (see differences between 
+Jansen & Niyogi, 2007; Plummer et al., 2010; Reidy et al., 2017), we emphasize
+that the choice of distance function is not trivial. Practitioners are 
+encouraged to choose a distance function that captures meaningful differences
+between observations, given how their data are represented. For example, the
+Jeffrey divergence would not be an appropriate notion of distance in 
+applications where the speech data are represented as time series and where
+the researchers sought to map the realizations of those time series into a
+low-dimensional space. It is an ongoing research question to understand how 
+different distance functions behave on speech data, in the context of manifold 
+learning; hence, our use of the Jeffrey divergence here should not be taken as 
+an assurance that this notion of distance will yield acceptable results in all 
+instances, even when the speech data are represented as _static_ excitation
+patterns or spectra as in the current example.
+
+[^jd]: We leave it to the reader to confirm that the Jeffrey divergence is 
+nonnegative and symmetric (i.e., $\mathsf{Jeffrey}(x_i, x_j) = \mathsf{Jeffrey}(x_j, x_i)$).
+<!--
+But we do point out a subtle feature of the Jeffrey divergence that recommends
+it as a distance function on excitation patterns: Given two frequency-indices 
+$n$ and $n'$ and two excitation patterns $x_i$ and $x_j$, such that on the 
+logarithmic scale the excitation patterns differ equally at the two frequencies
+(i.e., that $log\left(\frac{x_i[n]}{x_j[n]}\right) = log\left(\frac{x_i[n']}{x_j[n']}\right)$),
+then
+--->
+
+The Jeffrey divergence can be straightforwardly be implemented as a generic
+function and associated methods, in order to facilitate vectorization over
+lists of excitaiton patterns:
+```{r}
+Jeffrey <- function(i, j) {
+  UseMethod("Jeffrey", i)
+}
+
+Jeffrey.numeric <- function(i, j) {
+  i <- i/sum(i)
+  j <- j/sum(j)
+  sum((i-j) * log(i/j))
+}
+
+Jeffrey.list <- function(i, j) {
+  purrr::map2_dbl(i, j, Jeffrey.numeric)
+}
+```
+
+
+**Step 3: Construct individual submanifolds**
+
+The third step involves the construction of speaker-internal submanifolds
+by adding and weighting edges between productions by the same talker. In 
+the examples in Section 2 (of Plummer & Reidy, under revision), edges were
+added between nodes based on the results of a nearest-neighbor search. Here,
+to simplify the demonstration, we will add edges in a much less sophisticated
+manner: all distinct productions by a given talker will be connected, yielding
+speaker-internal submanifolds that are complete graphs. The weight assigned
+to each edge will be based on the Jeffrey divergence between the two excitation
+patterns (read: nodes) connected by the edge. Given adjacent nodes $i$ and $j$, 
+with corresponding excitation patterns $x_i$ and $x_j$, respectively, the weight
+of the edge connecting $i$ and $j$ is $w(i,j) = e^{-\mathsf{Jeffrey}(x_i, x_j)}$.
+By exponentiating the inverse of the Jeffrey divergence, the a relatively large
+weight will be assigned to an edge between two nodes whose corresponding 
+excitation patterns have relatively small divergence (see Figure below).
+Hence, the weighting function $w$ may be thought of as a similarity function.
+
+These weighted edges are added between pairs of nodes with a call to 
+`WeightEdgesIf`. The `edges` argument takes an expression that evaluates to a 
+_logical_ vector within the data set passed to `x`; hence, this expression will
+often reference _metadata_ variables within the data set `x`. In this example,
+the subexpression `!(Session_i == Session_j & Trial_i == Trial_j)` ensures that
+there are no loops (i.e., that no edges connect a node to itself); the other
+subexpression `Participant_i == Participant_j` adds an edge between all distinct
+productions by the same adult. The `weights` argument takes an expression that 
+evaluates to a _numeric_ vector within the data set `x`; hence, this expression 
+should reference the two _data_ variables. In the data set returned by 
+`WeightEdgesIf`, the edge weights are stored in a variable named `W_ij`; only
+pairs of nodes (i.e., rows) where the `edges` expression evaluates to `TRUE`
+is the `W_ij` variable nonzero.
+
+```{r}
+adults_submanifolds <-
+  WeightEdgesIf(
+    x = adults_node_pairs,
+    edges = Participant_i == Participant_j & !(Session_i == Session_j & Trial_i == Trial_j),
+    weights = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  )
+
+adults_submanifolds
+
+# No loops: all values of W_ij are 0 when node_i == node_j.
+adults_submanifolds %>%
+  dplyr::filter(Session_i == Session_j & Trial_i == Trial_j) %>%
+  dplyr::select(Session_i, Trial_i, Session_j, Trial_j, W_ij) 
+
+# Manifold is not connected: no edges between productions by different talkers.
+adults_submanifolds %>%
+  dplyr::filter(Participant_i != Participant_j) %>%
+  dplyr::select(Session_i, Trial_i, Session_j, Trial_j, W_ij)
+```
+
+
+**Step 4: Align the individual submanifolds**
+
+In the fourth step, edges are added between productions by different talkers
+in order to align the speaker-specific components into a connected socio-auditory
+manifold. As in the previous step, these between-speaker edges are added via
+a call to `WeightEdgesIf`. In this example, the submanifolds are aligned to
+each other according to the lexical information association with the nodes:
+two excitation patterns are connected by an edge if the respective speakers
+are different, but the respective target words are the same. An appropriate
+expression for this alignment scheme is 
+`Participant_i != Participant_j & Orthography_i == Orthography_j`. (The reader
+should verify that this expression indeed adds no loops into the graph.)
+
+```{r}
+adults_manifold <-
+  WeightEdgesIf(
+    x = adults_submanifolds,
+    edges = Participant_i != Participant_j & Orthography_i == Orthography_j,
+    weights = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  )
+```
+
+The reader may have noticed that in both calls to `WeightEdgesIf` the
+`weights` were assigned using the same formula. Consequently, all edges in the
+socio-auditory manifold could have been added with a single call to 
+`WeightEdgesIf`. (The reader is encouraged to determine a logical expression
+that could be passed to `edges` to accomplish this.) We nonetheless chose to
+add these edges in two steps in order to emphasize a conceptual difference
+in the work being done by the two types of edge: the speaker-internal edges
+_construct spaces_ of speech productions; the between-speaker edges 
+_align spaces_. This distinction is important to bear in mind since not all
+applications of manifold learning will warrant a common weighting scheme for
+the two types of edges. For example, in some applications, it is desirable to
+scale the weights on the space-constructing edges by a parameter $\mu \in [0,1]$
+and to scale the weights on the space-aligning edges by $1-\mu$, in order to
+differentially adjust the relative importance of the internal structure of
+each space versus the correspondences between spaces. In other applications,
+the spaces to be aligned may not be commensurable (i.e., it may not be possible
+to define a coherent distance function of points from different spaces), in
+which case the weights applied to the space-aligning edges must be a constant
+or derived from some source other than the observations in the two spaces
+(see, Plummer, 2014; Wang & Mahadevan, 2009).
+
+
+**Step 5: Eigenmap the aligned manifold into a low-dimensional space**
+
+The final step asks us to map the aligned manifold into a low-dimensional
+space. In order to carry out this mapping by computing the Laplacian 
+eigenvectors of the constructed manifold, it will first be necessary to 
+reshape the edge-weight values in `adults_manifold$W_ij` into the adjacency
+matrix of the manifold. That is, the weights variable `W_ij` has the shape of
+a vectorized matrix that needs to be recast into a two-dimensional array. This
+reshaping is accomplished by calling `AdjacencyMatrix`, which should be called
+with a comma-separated list of unquoted variable names whose values will be
+used to construct row- and column-names of the resulting matrix.
+
+```{r}
+adults_adjacency <- 
+  AdjacencyMatrix(x = adults_manifold, Session, Trial, Orthography)
+
+adults_adjacency[1:6, 1:2]
+
+isSymmetric(adults_adjacency)
+```
+
+The subsequent computations for computing the degree matrix, the Laplacian
+matrix, and the Laplacian eigenvectors of the `adults_adjacency` matrix are 
+encapsulated in the function `LaplacianEigenmaps`. The returned data table 
+comprises three variables: `Eigenvector`, a vector of eigenvector names `e0`,
+`e1`, `e2`, `...`; `Eigenvalue`, a vector of the eigenvalues associated with
+the eigenvectors; and `Projection`, a list of data tables that associate each
+original data observation (identified by the row-names of the adjacency matrix)
+to its projected value on a given eigenvector.
+
+```{r}
+adults_eigenmaps <- LaplacianEigenmaps(adults_adjacency)
+
+adults_eigenmaps
+
+adults_eigenmaps$Projection[[2]]
+```
+
+Recall that the optimal $n$-dimensional embedding of the data is given by the
+Laplacian eigenvectors associated with the $n$ least nonzero eigenvalues.
+By construction, the `adults_manifold` is a connected graph (i.e., there is a
+sequence of edges from any node to any other node); whence, it follows that
+only the first eigenvalue (i.e., that associated with `e0`) is zero.[^e0]
+Consequently, the first eigenvector `e0` is ignored, and only eigenvectors
+`e1` and above should be considered when determining the low-dimensional 
+space into which the data are eigenmapped.[^eigenmapping]
+
+[^e0]: In actuality, the first eigenvalue of the `adults_adjacency` matrix is
+not identically zero, as the reader may verify by calling 
+`adults_eigenmaps$Eigenvalue[1]`. This discrepancy is due to quantization error;
+however, we note that the magnitude of the first eigenvalue
+(`r abs(adults_eigenmaps$Eigenvalue[1])`) is less than a reasonable threshold
+of `sqrt(.Machine$double.eps)` = `r sqrt(.Machine$double.eps)`.
+
+[^eigenmapping]: Note that `LaplacianEigenmaps` returns all Laplacian 
+eigenvectors, not just those judged to be nonzero or greater than some 
+threshold. Furthermore, depending on how a manifold is constructed, it is
+possible for more than one eigenvalue to be zero. Specifically, the number of
+zero-valued eigenvalues will be equal to the number of connected components
+in the manifold. Hence, in practice, it is important to inspect the eigenvalues
+output by `LaplacianEigenmaps`, and not to assume that all eigenvalues other
+than `e0` should be used to determine the low-dimensional embedding of the
+data.
+
+Once the eigenmapping projections have been computed, a low-dimensional 
+representation of the data can be constructed with the function 
+`ReduceDimensions`, which should be called with a comma-separated list of the
+unquoted `Eigenvector` names that determine the low-dimensional space:
+
+```{r}
+adults_e1_e2 <- ReduceDimensions(x = adults_eigenmaps, e1, e2)
+
+adults_e1_e2
+
+tidyr::separate(adults_e1_e2, X, 
+                into = c("Session", "Trial", "Orthography"))
+```
+
+The left panel of the figure below shows the distribution of the adults' sibilant 
+fricative productions in the two-dimensional space defined by the first two 
+eigenvectors, `adults_eigenmaps$e1` and `adults_eigenmaps$e2`. Visual inspection 
+of this figure suggests that `e1` encodes the linguistic place-of-articulation 
+difference between /s/ and /ʃ/ and that `e2` encodes indexical differences
+between men and women. Construction of the socio-auditory manifold did not
+explicitly leverage information about the target consonant or the talker sex
+associated with the sibilant fricative productions; rather, it leveraged
+information about the target _word_ and the talker _identity_, which suggests
+that by eigenmapping the manifold into a lower-dimensional space, more abstract
+categories (i.e., target consonant abstracts over the multiple target words in
+which the fricatives were produced; talker sex abstracts over the individual
+male and female talkers) were learned. Furthermore, because the learned
+eigenvectors do not encode the more granular categories of target word and
+target identity, the auditory-acoustic similarity information that was encoded
+as edge weights seems to be crucial to the learned abstractions. 
+
+```{r, echo = FALSE, message = FALSE, fig.width = 6, fig.height = 3, fig.retina = 2, fig.align = "center"}
+# Adults: Laplacian Eigenmaps.
+divergence_weights <- 
+  tibble::tibble(Divergence = seq(from = 0, to = 10, by = 0.01),
+                 Weight = exp(-Divergence))
+
+divergence_weights_gg <-
+  ggplot(data = divergence_weights, aes(x = Divergence, y = Weight)) +
+  theme_bw() +
+  geom_line(size = 2, color = "#008542")
+
+adults_e1e2 <- 
+  adults_e1_e2 %>%
+  tidyr::separate(X, into = c("Session", "Trial", "Orthography")) %>%
+  dplyr::left_join(dplyr::select(SibilantFricatives(), 
+                                 Participant, Session, Trial, Female, Target, Transcription),
+                   by = c("Session", "Trial")) %>%
+  dplyr::mutate(Sex = ifelse(Female, "Female", "Male")) %>%
+  dplyr::select(Session, Participant, Sex, Trial, Orthography, Target, Transcription, e1, e2)
+
+adults_target_e1_glm <-
+  adults_e1e2 %>%
+  dplyr::mutate(s = ifelse(Target == "s", 1, 0)) %>%
+  glm(formula = s ~ e1, family = "binomial")
+
+adults_sex_e2_glm <-
+  adults_e1e2 %>%
+  dplyr::mutate(Female = ifelse(Sex == "Female", 1, 0)) %>%
+  glm(formula = Female ~ e2, family = "binomial")
+
+adults_e1e2_gg <- 
+  adults_e1e2 %>%
+  ggplot(aes(x = e1, y = e2, shape = Transcription, linetype = Target, color = Sex)) +
+  theme_bw() +
+  xlab("e1") +
+  ylab("e2") +
+  scale_x_reverse() +
+  scale_y_reverse(position = "right") +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  scale_linetype_manual(values = c(s = "dashed", S = "dotted")) +
+  scale_color_manual(values = c(Female = "#0039A6", Male = "#E98300")) +
+  geom_vline(xintercept = -coef(adults_target_e1_glm)[1]/coef(adults_target_e1_glm)[2]) +
+  geom_hline(yintercept = -coef(adults_sex_e2_glm)[1]/coef(adults_sex_e2_glm)[2]) +
+  geom_point(size = 3) +
+  guides(shape = FALSE, linetype = FALSE, color = FALSE)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(divergence_weights_gg, vp = grid::viewport(layout.pos.col = 1))
+print(adults_e1e2_gg, vp = grid::viewport(layout.pos.col = 2))
+```
+
+
+
+**Comparison with spectral moments**
+
+Although spectral moments have been criticized for being amibguously 
+interpretable in terms of the underlying articulation (see Koenig et al., 2013) 
+and for not capturing subtle spectral characteristics that may be perceptually 
+salient (see Jannedy & Weirich, 2017), we nonetheless take them as an acceptable 
+point of comparison with the low-dimensional representation derived from 
+Laplacian eigenmapping, because of their sheer pervasiveness in the literature. 
+For example, spectral moments have been used to represent sibilant fricatives in 
+studies that have investigated _inter alia_ place-of-articulation differences 
+(e.g., Forrest et al., 1988; Jongman et al., 2000), sex-related differences 
+(e.g., Fox & Nissen, 2005; Romeo et al., 2013), and developmental differences
+(e.g., Li, 2012; Nissen & Fox, 2005; Nittrouer et al., 1989).
+
+```{r, echo = FALSE, message = FALSE, fig.width = 6, fig.height = 3, fig.retina = 2, fig.align = "center"}
+adults_moments <-
+  SibilantFricatives() %>%
+  dplyr::filter(Adult) %>%
+  dplyr::mutate(Sex = ifelse(Female, "Female", "Male")) %>%
+  dplyr::mutate(
+    Centroid = purrr::map_dbl(ExcitationPattern, Centroid),
+    Skewness = purrr::map_dbl(ExcitationPattern, Skewness)
+  ) %>%
+  dplyr::group_by(Participant) %>%
+  dplyr::mutate(
+    Centroid_talker_mu = mean(Centroid),
+    Centroid_talker_sigma = sd(Centroid)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::group_by(Orthography) %>%
+  dplyr::mutate(
+    Centroid_word_mu = mean(Centroid),
+    Centroid_word_sigma = sd(Centroid)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    Centroid_talker_0 = Centroid - Centroid_talker_mu,
+    Centroid_talker_z = Centroid_talker_0 / Centroid_talker_sigma,
+    Centroid_word_0 = Centroid - Centroid_word_mu,
+    Centroid_word_z = Centroid_word_0 / Centroid_word_sigma
+  )
+
+adults_target_m1_glm <-
+  adults_moments %>%
+  dplyr::mutate(s = ifelse(Target == "s", 1, 0)) %>%
+  glm(formula = s ~ Centroid_talker_z, family = "binomial")
+
+adults_sex_m1_glm <-
+  adults_moments %>%
+  dplyr::mutate(Female = ifelse(Sex == "Female", 1, 0)) %>%
+  glm(formula = Female ~ Centroid_word_z, family = "binomial")
+
+adults_m1m3_raw_gg <-
+  adults_moments %>%
+  ggplot(aes(x = Centroid, y = Skewness, shape = Transcription, linetype = Target, color = Sex)) +
+  theme_bw() +
+  xlab("Centroid") +
+  ylab("Skewness") +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  scale_linetype_manual(values = c(s = "dashed", S = "dotted")) +
+  scale_color_manual(values = c(Female = "#0039A6", Male = "#E98300")) +
+  geom_point(size = 3) +
+  guides(shape = FALSE, linetype = FALSE, color = FALSE)
+  
+adults_m1_talker_word_z_gg <-
+  adults_moments %>%
+  ggplot(aes(x = Centroid_talker_z, y = Centroid_word_z, shape = Transcription, linetype = Target, color = Sex)) +
+  theme_bw() +
+  xlab("Centroid (z-scored by talker)") +
+  ylab("Centroid (z-scored by word)") +
+  scale_y_continuous(position = "right") +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  scale_linetype_manual(values = c(s = "dashed", S = "dotted")) +
+  scale_color_manual(values = c(Female = "#E98300", Male = "#0039A6")) +
+  geom_vline(xintercept = -coef(adults_target_m1_glm)[1]/coef(adults_target_m1_glm)[2]) +
+  geom_hline(yintercept = -coef(adults_sex_m1_glm)[1]/coef(adults_sex_m1_glm)[2]) +
+  geom_point(size = 3) +
+  guides(shape = FALSE, linetype = FALSE, color = FALSE)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(adults_m1m3_raw_gg, vp = grid::viewport(layout.pos.col = 1))
+print(adults_m1_talker_word_z_gg, vp = grid::viewport(layout.pos.col = 2))
+```
+
+```{r echo = FALSE}
+# Logistic regression classifiers for Target consonant:
+adults_target_e1_acc <-
+  adults_e1e2 %>%
+  dplyr::mutate(Fitted = fitted(adults_target_e1_glm)) %>%
+  dplyr::mutate(Prediction = ifelse(Fitted > 0.5, "s", "S")) %>%
+  dplyr::mutate(Accuracy = ifelse(Target == Prediction, 1, 0)) %>%
+  dplyr::pull(Accuracy) %>%
+  (function(.x) {sum(.x) / length(.x)})
+
+adults_target_m1_acc <-
+  adults_moments %>%
+  dplyr::mutate(Fitted = fitted(adults_target_m1_glm)) %>%
+  dplyr::mutate(Prediction = ifelse(Fitted > 0.5, "s", "S")) %>%
+  dplyr::mutate(Accuracy = ifelse(Target == Prediction, 1, 0)) %>%
+  dplyr::pull(Accuracy) %>%
+  (function(.x) {sum(.x) / length(.x)})
+
+# Logistic regression classifiers for talker Sex:
+adults_sex_e2_acc <-
+  adults_e1e2 %>%
+  dplyr::mutate(Fitted = fitted(adults_sex_e2_glm)) %>%
+  dplyr::mutate(Prediction = ifelse(Fitted > 0.5, "Female", "Male")) %>%
+  dplyr::mutate(Accuracy = ifelse(Sex == Prediction, 1, 0)) %>%
+  dplyr::pull(Accuracy) %>%
+  (function(.x) {sum(.x) / length(.x)})
+
+adults_sex_m1_acc <-
+  adults_moments %>%
+  dplyr::mutate(Fitted = fitted(adults_sex_m1_glm)) %>%
+  dplyr::mutate(Prediction = ifelse(Fitted > 0.5, "Female", "Male")) %>%
+  dplyr::mutate(Accuracy = ifelse(Sex == Prediction, 1, 0)) %>%
+  dplyr::pull(Accuracy) %>%
+  (function(.x) {sum(.x) / length(.x)})
+```
+
+The literature suggests that centroid and skewness are the two most reliable
+moments for differentiating /s/ and /ʃ/ (e.g., Forrest et al., 1988; Jongman
+et al., 2000). Centroid indexes the location of energy concentration along
+the frequency scale, which is expected to vary between /s/ and /ʃ/ due
+to differences in front cavity volume. Skewness tends to be (negatively)
+correlated with centroid, which is likely due to the finite support of spectral
+representations, imposed by the acoustic waveform being sampled at a finite rate.
+The left panel of the figure above shows the distribution of centroid and
+skewness values computed from the adults' sibilant fricative productions. In
+this plot, it is evident that the two underlying dimensions of variation learned
+from Laplacian eigenmapping (i.e., target consonant and talker sex) are
+simultaneously discernable in either of the spectral moments shown. For example,
+the centroid values could be (very) roughly divided into four intervals:
+men's /ʃ/ < women's /ʃ/ < mens /s/ < women's /s/. This situation is an example
+of a commonly encountered problem with purely physical representations of
+speech data: the underlying dimensions of variation that are of principal 
+interest do not differentially map onto orthogonal physical attributes of speech.
+
+One solution to this problem is to batch normalize physical feature values in 
+order to marginalize out some underlying dimension of variation. For example,
+data may be normalized within the levels of an indexical variable in order to
+marginalize out the underlying indexical variation, and likewise for a 
+linguistic variable. The right panel of the figure above demonstrates two
+examples of this normalization: when $z$-scored by talker ($x$-axis), the 
+residual variation indicates the linguistic place-of-articulation dimension;
+when $z$-scored by word ($y$-axis), the residual variation indicates the
+indexical dimension of talker sex.
+
+The similarity between the left and right panels of the figure above suggests
+that the edge-structure of the socio-auditory manifold constructed on the
+adults' productions accomplishes a function similar to post-hoc batch 
+normalization. To quantitatively compare these two methods, we fit a series of
+logistic regression classifiers. Target consonant category was predicted almost
+perfectly by either method: `r round(100*adults_target_e1_acc, 3)`% accuracy 
+with the Laplacian eigenvector `e1`, and `r round(100*adults_target_m1_acc, 3)`% 
+accuracy with centroid that has been $z$-scored within talker. Likewise, talker 
+sex was predicted with high accuracy by both methods, but again Laplacian 
+eigenmapping yielded greater accuracy: `r round(100*adults_sex_e2_acc, 3)`% 
+accuracy with `e2`, and `r round(100*adults_sex_m1_acc, 3)`% accuracy with 
+centroid that has been $z$-scored within word.
+
+
+**Interim summary and discussion**
+
+This example demonstrated how to implement the computations needed to construct
+a socio-auditory manifold from high-dimensional speech data and then eigenmap
+that manifold into a low-dimensional space---a procedure borrowed from the
+field of \emph{manifold learning}. The specific edge-structure used in
+the manifold for adults' productions was found to function similarly to post-hoc
+batch normalization within linguistic (target word) and indexical (talker 
+identity) variables. Compared with normalized centroid values, the Laplacian
+eigenvectors better predicted target consonant and talker sex, although these
+improvements were very modest. 
+
+An instructive interpretation of manifold learning, in this example, is that 
+eigenmapping projects a gestalt representation of speech (e.g., an excitation 
+pattern) into a space whose dimensions are interpretable as the underlying 
+linguistic and indexical dimensions of acoustic-phonetic variation for sibilant 
+fricatives. In this way, the low-dimensional values output by eigenmapping 
+should not necessarily be construed as ``acoustic features'' in the traditional 
+meaning of the term: The image of the speech observations under eigenmapping 
+represent the distribution of these observations across the underlying 
+dimensions of meaningful variation for the speech observations (e.g., linguistic 
+and indexical dimensions). By contrast, such dimensions of variation are often 
+(over)loaded onto the individual acoustic features---construed as variables 
+computed solely from individual speech observations---as was seen in the raw 
+centroid values.
+
+
+
+
+## Using a socio-auditory manifold to assess consonant development
+
+The preceding example focused on enumerating the individual computational steps 
+that together construct a socio-auditory manifold and eigenmap it to a 
+low-dimensional space. The current example, by contrast, focuses squarely on
+third and fourth steps in this process---the addition of edges to the 
+manifold---in order to explicate how the structure of the socio-auditory 
+manifold affects the low-dimensional representation learned from eigenmapping.
+
+For this demonstration, the goal will be to learn for the children's productions
+a one-dimensional representation that predicts the associated VAS ratings.
+Because these VAS ratings indicate adult perceptual judgments along a 
+_one-dimensional_ continuum and because the linguistic place-contrast between 
+/s/ and /ʃ/ is indicated by the _first_ Laplacian eigenvector of the manifold 
+of the adults' productions, the manifold for deriving a feature for the
+children's productions has the following graph structure: within a given talker,
+all distinct productions are connected to each other; between any two adults,
+productions of the same target word are connected; between a child and an adult,
+productions of the same target word are connected; between any two children, no
+productions are connected. This particular construction is motivated by the 
+facts that it represents the structure of each intratalker production space and 
+that it puts each child's production space in correspondence with the 
+community-norm set by the adults' production spaces.[^vas-assumption]
+
+[^vas-assumption]: Furthermore, this construction assumes that the adult
+community-norm production categories are similar in structure to the
+community-norm perception categories, and that the perceptual processes at
+play in the VAS task involve something like comparing individual stimuli to
+these community-norm categories.
+
+The listing below shows how the `community_norm_manifold` can be implemented.[^pipes]
+
+[^pipes]: In this listing, the calls to functions from the `phoneigen`
+package have been chained together using the pipe operator `%>%` from the
+`magrittr` package. This operator takes the value of the expression on its
+lefthand side and passes it as the first unnamed argument of the expression on 
+its righthand side. 
+
+```{r}
+community_norm_manifold <-
+  SibilantFricatives() %>%
+  CartesianSquare(Participant, Adult, Session, Trial, Orthography, ExcitationPattern) %>%
+  WeightEdgesIf(
+    edges = Participant_i == Participant_j & !(Session_i == Session_j & Trial_i == Trial_j),
+    weights = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  ) %>%
+  WeightEdgesIf(
+    edges = Participant_i != Participant_j & Orthography_i == Orthography_j & 
+      (Adult_i | Adult_j),
+    weights = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  )
+```
+
+A one-dimensional representation of the children's (and the adults') productions
+can then be learned by eigenmapping the `community_norm_manifold`:
+
+```{r}
+community_norm_e1 <-
+  community_norm_manifold %>%
+  AdjacencyMatrix(Participant, Session, Trial, Orthography) %>%
+  LaplacianEigenmaps() %>%
+  ReduceDimensions(e1) %>%
+  tidyr::separate(X, into = c("Participant", "Session", "Trial", "Orthography")) %>%
+  dplyr::left_join(dplyr::select(SibilantFricatives(), 
+                                 Session, Trial, Adult, Target, Transcription, Rating),
+                   by = c("Session", "Trial"))
+```
+
+```{r, echo = FALSE}
+community_norm_vas_e1_pearson <-
+  with(dplyr::filter(community_norm_e1, !Adult), cor(Rating, e1, method = "pearson"))
+community_norm_vas_e1_spearman <-
+  with(dplyr::filter(community_norm_e1, !Adult), cor(Rating, e1, method = "spearman"))
+```
+
+The figure below makes the case that the Laplacian eigenvector `e1` denotes a
+linguistic place-continuum learned from the `community_norm_manifold`. The left 
+panel shows the distribution of `e1` values stratified by the transcription and 
+target categories. The top and bottom strata correspond to the adults' 
+productions of /s/ and /ʃ/, respectively, and the intermediate strata correspond 
+to children's productions. The mean of the values in each stratum is indicated 
+by an oversized point. The most extreme mean values are found in the adults' 
+strata, suggesting an /s/-/ʃ/ continuum anchored by the adults' productions as 
+endpoints. The children's productions tend to fall between these endpoints, 
+suggesting that the values of `e1` represent the incipient consonant contrast
+developing in these children. Furthermore, within each target consonant category 
+(i.e., blue points for target /s/ and orange points for target /ʃ/), the mean 
+values of each stratum form an orderly scale according to transcription 
+category: [ʃ] $\to$ [ʃ]:[s] $\to$ [s]:[ʃ] $\to$ [s].[^e1_s_range] The right
+panel shows a measure of adults' perceptual judgment that is more continuous
+than transcription categories, plotting the VAS ratings against the values of 
+the Laplacian eigenvector `e1`. 
+<!--
+Finally, the Pearson product-moment correlation
+coefficient between the VAS ratings and `e1` is 
+`r round(abs(community_norm_vas_e1_pearson), 3)`, and Spearman's rank 
+correlation coefficient is `r round(abs(community_norm_vas_e1_spearman))`.
+--->
+
+[^e1_s_range]: One curiosity about the distribution of `e1` values is that 
+values for children's productions of target /s/ span a much narrower range than 
+the values for their productions of target /ʃ/. It is not clear whether this
+difference in range reflects a greater sensitivity by transcribers to 
+misarticulations of target /s/ as opposed to target /ʃ/, or whether it is an
+artifact of the graph structure (e.g., that the excitation patterns for
+children's productions of target /ʃ/ words were adjacent to a greater number of 
+adults' productions in the `community_norm_manifold`, as compared with those 
+for children's productions of target /s/ words).
+
+```{r, echo = FALSE}
+transcription_levels <- 
+  c("Adult /s/", "[s] for /s/", "[s] for /ʃ/", "[s]:[ʃ] for /s/", "[s]:[ʃ] for /ʃ/",
+      "[ʃ]:[s] for /s/", "[ʃ]:[s] for /ʃ/", "[ʃ] for /s/", "[ʃ] for /ʃ/", "Adult /ʃ/")
+
+transcription_labels <-
+  tibble::tibble(
+    Label = transcription_levels,
+    Target = c("s", rep(c("s", "S"), 4), "S"),
+    Transcription = c(rep("s", 3), rep(c("s:S", "S:s"), each = 2), rep("S", 3))
+  )
+
+add_transcription_labels <- function(x) {
+  ipa <- 
+    x %>%
+    dplyr::mutate(TargetIPA = c("s" = "/s/", "S" = "/ʃ/")[Target]) %>%
+    dplyr::mutate(TranscriptionIPA = c("s"="[s]", "s:S"="[s]:[ʃ]", "S:s"="[ʃ]:[s]", "S"="[ʃ]")[Transcription])
+  if ("Adult" %in% names(ipa)) {
+    labeled <- 
+      ipa %>%
+      dplyr::mutate(Label = ifelse(Adult, 
+                                   sprintf("Adult %s", TargetIPA), 
+                                   sprintf("%s for %s", TranscriptionIPA, TargetIPA))) %>%
+      dplyr::mutate(Label = factor(Label, levels = transcription_levels))
+  } else {
+    labeled <-
+      ipa %>%
+      dplyr::mutate(Label = sprintf("%s for %s", TranscriptionIPA, TargetIPA)) %>%
+      dplyr::mutate(Label = factor(Label, levels = transcription_levels[2:9]))
+  }
+  return(labeled)
+}
+```
+
+```{r, echo = FALSE, message = FALSE, fig.width = 7, fig.height = 3, fig.retina = 2, fig.align = "center"}
+community_norm_transcription_e1 <- add_transcription_labels(community_norm_e1)
+
+community_norm_transcription_means <-
+  community_norm_transcription_e1 %>%
+  dplyr::group_by(Label) %>%
+  dplyr::summarize(e1 = mean(e1)) %>%
+  dplyr::ungroup() %>%
+  dplyr::left_join(transcription_labels, by = "Label")
+
+community_norm_transcription_e1_gg <-
+  community_norm_transcription_e1 %>%
+  ggplot(aes(x = e1, y = Label, color = Target, shape = Transcription)) +
+  theme_bw() +
+  ylab("") +
+  scale_x_reverse() +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_fill_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  geom_jitter(height = 0.05, size = 1) +
+  geom_point(data = community_norm_transcription_means, aes(fill = Target), size = 5) +
+  guides(color = FALSE, shape = FALSE, fill = FALSE)
+
+community_norm_vas_e1_means <-
+  dplyr::filter(community_norm_e1, !Adult) %>%
+  dplyr::group_by(Target, Transcription) %>%
+  dplyr::summarize(Rating = mean(Rating), e1 = mean(e1)) %>%
+  dplyr::ungroup()
+
+community_norm_rating_e1_gg <-
+  ggplot(data = dplyr::filter(community_norm_e1, !Adult), 
+         aes(x = e1, y = Rating)) +
+  theme_bw() +
+  xlab("e1") +
+  ylab("VAS rating") +
+  scale_x_reverse() +
+  scale_y_continuous(position = "right", limits = c(0, 1)) +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_fill_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  geom_point(aes(color = Target, shape = Transcription), size = 1, alpha = 0.5) +
+  geom_point(data = community_norm_vas_e1_means, size = 5,
+             aes(color = Target, shape = Transcription, fill = Target)) +
+  # geom_smooth(method = "auto", se = FALSE, color = "#008542") +
+  # geom_smooth(aes(color = Target), method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = FALSE, color = "#766A62") +
+  guides(shape = FALSE, color = FALSE, fill = FALSE)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(community_norm_transcription_e1_gg, vp = grid::viewport(layout.pos.col = 1))
+print(community_norm_rating_e1_gg, vp = grid::viewport(layout.pos.col = 2))
+```
+
+
+**Comparison with other manifold structures**
+
+In order to demonstrate how the structure of the socio-auditory manifold affects
+the eigenmapped representation of the speech observations, we present a 
+manifold structure that is conceptually similar to the `community_norm_manifold`
+but that yields an eigenmapping that is starkly different from the one
+learned above. Specifically, we will construct a manifold that is similar to
+the `community_norm_manifold` except that it omits all edges that connect
+different productions by a given child talker. Consequently, in this manifold,
+the neighborhood of each node associated with a production of some word by 
+some child comprises all and only nodes associated with a production of that 
+same word by some adult. The following code constructs this 
+`word_neighborhoods_manifold` and then eigenmaps it into to a one-dimensional 
+space:
+
+```{r}
+word_neighborhoods_manifold <-
+  SibilantFricatives() %>%
+  CartesianSquare(Participant, Adult, Session, Trial, Orthography, ExcitationPattern) %>%
+  WeightEdgesIf(
+    edges = Participant_i == Participant_j & Adult_i & Adult_j & 
+      !(Session_i == Session_j & Trial_i == Trial_j),
+    weights = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  ) %>%
+  WeightEdgesIf(
+    edges = Participant_i != Participant_j & Orthography_i == Orthography_j & 
+      (Adult_i | Adult_j),
+    weights = exp(-Jeffrey(ExcitationPattern_i, ExcitationPattern_j))
+  )
+
+word_neighborhoods_e1 <-
+  word_neighborhoods_manifold %>%
+  AdjacencyMatrix(Participant, Session, Trial, Orthography) %>%
+  LaplacianEigenmaps() %>%
+  ReduceDimensions(e1) %>%
+  tidyr::separate(X, into = c("Participant", "Session", "Trial", "Orthography")) %>%
+  dplyr::left_join(dplyr::select(SibilantFricatives(), 
+                                 Session, Trial, Adult, Target, Transcription, Rating),
+                   by = c("Session", "Trial"))
+```
+
+The figure below demonstrates the importance of the within-child edges for 
+learning a low-dimensional embedding that represents a linguistic
+place-of-articulation continuum. Without these edges, the observations are
+pooled into neighborhoods defined by the acoustic properties of the adults'
+productions of a given word. The reason for the disparity between the 
+eigenmap embeddings of the `community_norm_manifold` and the 
+`word_neighborhoods_manifold` is that the values in the manifolds' respective
+adjacency matrices act as penalties on the distance between points in the
+eigenmapped embedding. Hence, if two adjacent nodes in a manifold have a high
+edge weight (due to low divergence between their excitation patterns), then
+an embedding will incur a large penalty if it maps these two nodes far from
+each other in the low-dimensional space. Conversely, if two nodes are not
+adjacent, then their corresponding entries in the adjacency matrix will be
+zero, and an embedding will incur no penalty for mapping these nodes to points
+that are far from each other. 
+
+Consequently, because a given production by a child is adjacent only to 
+productions by adults in the `word_neighborhoods_manifold`, the eigenmapped 
+embedding will map the children's productions near to the adults' productions 
+of the same words in order to avoid any large penalties, without any regard as 
+to where a given child's productions are mapped in relation to each other. By 
+contrast, the neighborhood of a given production by a child in the 
+`community_norm_manifold` comprises productions from adults and productions 
+from that child; hence, the eigenmapped embedding of a given observation results
+from a competition between being near to productions by the same talker and 
+being near to adults' productions of the same word---with this competition 
+being settled by the auditory-acoustic similarity between all of these adjacent
+productions as encoded in the edge weights of the manifold.
+
+
+```{r, echo = FALSE, message = FALSE, fig.width = 7, fig.height = 3, fig.retina = 2, fig.align = "center"}
+add_orthography_labels <- function(x) {
+  x %>%
+    dplyr::mutate(TargetIPA = c("s" = "/s/", "S" = "/ʃ/")[Target]) %>%
+    dplyr::mutate(Label = ifelse(Adult, sprintf("Adult %s", TargetIPA), Orthography))
+}
+
+word_neighborhoods_orthography_e1 <- add_orthography_labels(word_neighborhoods_e1)
+
+orthography_labels <-
+  tibble::tibble(
+    Label = c("Adult /ʃ/", "sheep", "shoe", "share", "shower", "shovel",
+              "Adult /s/", "soap", "soup", "sandwich", "sad", "sun", "sock",
+              "sick", "scissors"),
+    Target = c(rep("S", 6), rep("s", 9))
+  )
+
+word_neighborhoods_orthography_means <-
+  word_neighborhoods_orthography_e1 %>%
+  dplyr::group_by(Label) %>%
+  dplyr::summarize(e1 = mean(e1)) %>%
+  dplyr::ungroup() %>%
+  dplyr::left_join(orthography_labels, by = "Label") %>%
+  dplyr::select(Label, Target, e1)
+
+orthography_levels <-
+  word_neighborhoods_orthography_means %>%
+  dplyr::filter(substring(Label, 1, 5) != "Adult") %>%
+  dplyr::arrange(-e1) %>%
+  dplyr::pull(Label) %>%
+  (function(.x) {c("Adult /s/", .x, "Adult /ʃ/")})
+
+word_neighborhoods_orthography_e1 <-
+  word_neighborhoods_orthography_e1 %>%
+  dplyr::mutate(Label = factor(Label, levels = orthography_levels))
+
+word_neighborhoods_orthography_means <-
+  word_neighborhoods_orthography_means %>%
+  dplyr::mutate(Label = factor(Label, levels = orthography_levels)) %>%
+  dplyr::arrange(Label)
+
+word_neighborhoods_orthography_e1_gg <-
+  word_neighborhoods_orthography_e1 %>%
+  ggplot(aes(x = e1, y = Label, color = Target)) +
+  theme_bw() +
+  ylab("") +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  geom_jitter(height = 0.05, size = 1, shape = 21) +
+  guides(color = FALSE)
+
+word_neighborhoods_rating_e1_gg <-
+  ggplot(data = dplyr::filter(word_neighborhoods_e1, !Adult), 
+         aes(x = e1, y = Rating)) +
+  theme_bw() +
+  xlab("e1") +
+  ylab("VAS rating") +
+  scale_y_continuous(position = "right", limits = c(0, 1)) +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_fill_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  geom_point(aes(color = Target, shape = Transcription), size = 1, alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "#766A62") +
+  guides(shape = FALSE, color = FALSE, fill = FALSE)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(word_neighborhoods_orthography_e1_gg, vp = grid::viewport(layout.pos.col = 1))
+print(word_neighborhoods_rating_e1_gg, vp = grid::viewport(layout.pos.col = 2))
+```
+
+
+**Comparison with centroid**
+
+```{r, echo = FALSE}
+centroids <-
+  phoneigen::SibilantFricatives() %>%
+  dplyr::mutate(Centroid = purrr::map_dbl(ExcitationPattern, Centroid))
+
+children_centroids_vas_pearson <-
+  with(dplyr::filter(centroids, !Adult), cor(Rating, Centroid))
+```
+
+To compare the one-dimensional eigenmapped representation of the children's
+productions from the `community_norm_manifold` with an acoustic feature that 
+is commonly used to characterize children's productions of sibilant fricatives,
+we computed the centroid frequency of the excitation patterns. The figure below
+plots the distribution of (unnormalized) centroid values across the transcription
+categories (left panel), as well as the relationship between the VAS ratings
+and these centroid values (right panel). The Pearson product-moment correlation
+coefficients indicate that the one-dimensional representation eigenmapped from 
+the `community_norm_manifold` has a stronger relationship with the VAS ratings
+($|r|$ = `r round(abs(community_norm_vas_e1_pearson), 3)`) than raw centroid
+does ($|r|$ = `r round(abs(children_centroids_vas_pearson), 3)`).
+
+```{r, echo = FALSE, message = FALSE, fig.width = 7, fig.height = 3, fig.retina = 2, fig.align = "center"}
+transcription_centroids <- add_transcription_labels(centroids)
+
+transcription_centroids_means <-
+  transcription_centroids %>%
+  dplyr::group_by(Label) %>%
+  dplyr::summarize(Centroid = mean(Centroid)) %>%
+  dplyr::ungroup() %>%
+  dplyr::left_join(transcription_labels, by = "Label")
+
+transcription_centroids_gg <-
+  transcription_centroids %>%
+  ggplot(aes(x = Centroid, y = Label, color = Target, shape = Transcription)) +
+  theme_bw() +
+  xlab("Centroid") +
+  ylab("") +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_fill_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  geom_jitter(height = 0.05, size = 1) +
+  geom_point(data = transcription_centroids_means, aes(fill = Target), size = 5) +
+  guides(color = FALSE, shape = FALSE, fill = FALSE)
+
+children_vas_centroids_means <-
+  centroids %>%
+  dplyr::filter(!Adult) %>%
+  dplyr::group_by(Target, Transcription) %>%
+  dplyr::summarize(Rating = mean(Rating), Centroid = mean(Centroid)) %>%
+  dplyr::ungroup()
+
+
+children_centroids_gg <-
+  centroids %>%
+  dplyr::filter(!Adult) %>%
+  ggplot(aes(x = Centroid, y = Rating)) +
+  theme_bw() +
+  xlab("Centroid") +
+  ylab("VAS rating") +
+  scale_y_continuous(limits = c(0, 1), position = "right") +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_fill_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  geom_point(aes(color = Target, shape = Transcription), size = 1, alpha = 0.5) +
+  geom_point(data = children_vas_centroids_means, size = 5,
+             aes(color = Target, shape = Transcription, fill = Target)) +
+  # geom_smooth(aes(color = Target), method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = FALSE, color = "#766A62") +
+  guides(shape = FALSE, color = FALSE, fill = FALSE)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(transcription_centroids_gg, vp = grid::viewport(layout.pos.col = 1))
+print(children_centroids_gg, vp = grid::viewport(layout.pos.col = 2))
+```
+
+<!--
+```{r, echo = FALSE, message = FALSE, fig.width = 7, fig.height = 3, fig.retina = 2, fig.align = "center"}
+community_norm_vas_e1_by_talker <-
+  community_norm_e1 %>%
+  dplyr::filter(!Adult) %>%
+  dplyr::group_by(Participant, Target) %>%
+  dplyr::summarize(Rating = mean(Rating), e1 = mean(e1)) %>%
+  dplyr::ungroup()
+
+community_norm_vas_e1_by_talker_gg <-
+  community_norm_vas_e1_by_talker %>%
+  ggplot(aes(x = e1, y = Rating)) +
+  theme_bw() +
+  xlab("e1") +
+  ylab("VAS rating") +
+  scale_x_reverse() +
+  scale_y_continuous(position = "right", limits = c(0, 1)) +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_fill_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  geom_point(aes(color = Target), size = 1, alpha = 0.5) +
+  geom_smooth(method = "auto", se = FALSE, color = "#008542") +
+  # geom_smooth(aes(color = Target), method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = FALSE, color = "#766A62") +
+  guides(color = FALSE)
+
+children_vas_centroids_by_talker <-
+  centroids %>%
+  dplyr::filter(!Adult) %>%
+  dplyr::group_by(Participant, Target) %>%
+  dplyr::summarize(Rating = mean(Rating), Centroid = mean(Centroid)) %>%
+  dplyr::ungroup()
+
+children_vas_centroids_by_talker_gg <-
+  children_vas_centroids_by_talker %>%
+  ggplot(aes(x = Centroid, y = Rating)) +
+  theme_bw() +
+  xlab("Centroid") +
+  ylab("VAS rating") +
+  scale_y_continuous(limits = c(0, 1), position = "right") +
+  scale_color_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_fill_manual(values = c(s = "#0039A6", S = "#E98300")) +
+  scale_shape_manual(values = c("s" = 21, "s:S" = 22, "S:s" = 23, "S" = 24)) +
+  geom_point(aes(color = Target), size = 1, alpha = 0.5) +
+  geom_smooth(method = "auto", se = FALSE, color = "#008542") +
+  # geom_smooth(aes(color = Target), method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = FALSE, color = "#766A62") +
+  guides(color = FALSE)
+
+grid::grid.newpage()
+grid::pushViewport(grid::viewport(layout = grid::grid.layout(1, 2)))
+print(community_norm_vas_e1_by_talker_gg, vp = grid::viewport(layout.pos.col = 1))
+print(children_vas_centroids_by_talker_gg, vp = grid::viewport(layout.pos.col = 2))
+```
+
+```{r}
+with(community_norm_vas_e1_by_talker, abs(cor(Rating, e1, method = "pearson")))
+with(community_norm_vas_e1_by_talker, abs(cor(Rating, e1, method = "spearman")))
+
+with(children_vas_centroids_by_talker, abs(cor(Rating, Centroid, method = "pearson")))
+with(children_vas_centroids_by_talker, abs(cor(Rating, Centroid, method = "spearman")))
+```
+--->
