@@ -1,6 +1,6 @@
 Package: phoneigen
 Title: Phonetic Analyses with Laplacian Eigenmaps
-Version: 0.0.1
+Version: 0.0.2
 Authors@R: as.person(c(
     "Patrick F. Reidy <reidy@utdallas.edu> [aut,cre]",
     "Andrew R. Plummer <plummer.321@osu.edu> [aut]"
