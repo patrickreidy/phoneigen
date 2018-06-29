@@ -5,15 +5,18 @@ Authors@R: as.person(c(
     "Patrick F. Reidy <reidy@utdallas.edu> [aut,cre]",
     "Andrew R. Plummer <plummer.321@osu.edu> [aut]"
   ))
-Description: Functions for applying Laplacian Eigenmaps to acoustic data for 
-  the purpose of phonetic analysis. Includes data sets of adult speakers'
-  productions of American English /s, S/ and of productions of /t, k/. 
-  Vignettes apply Laplacian Eigenmaps to high-dimensional spectral 
-  representations so as to learn low-dimensional representations for the  
-  /s/-vs-/S/ and the /t/-vs-/k/ contrasts, respectively.
-  Accompanies the manuscript: A. R. Plummer and P. F. Reidy (submitted). 
-  "Computing low-dimensional representations of speech from socio-auditory 
-  structures for phonetic analyses". Journal of Phonetics.
+Description: Functions for applying manifold-and-eigenmapping methods to
+  high-dimensional speech data to learn low-dimensional representations of
+  speech for phonetic analysis. Includes a data set that comprises productions 
+  of the sibilant fricatives /s, S/ by native American English-speaking adults, 
+  productions by native American English-acquiring two- and three-year-old 
+  children, and ratings of the children's productions by native American 
+  English-speaking adult listeners. Includes a vignette on how to construct
+  a manifold from speech data and then eigenmap it to a low-dimensional
+  representation on which phonetic analysis can proceed. Accompanies the 
+  manuscript: A. R. Plummer and P. F. Reidy (submitted). "Computing 
+  low-dimensional representations of speech from socio-auditory structures for 
+  phonetic analyses". Journal of Phonetics.
 Depends: R (>= 3.4.0)
 Imports:
   caret,
