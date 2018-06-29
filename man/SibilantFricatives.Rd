@@ -11,40 +11,44 @@ See \url{learningtotalk.org} for more information about the
 SibilantFricatives()
 }
 \value{
-A \code{\link[tibble]{tibble}} with 990 rows (i.e., sibilant
+A \code{\link[tibble]{tibble}} with 2475 rows (i.e., target sibilant
   fricative productions) and 14 columns (i.e., variables):
-  \itemize{
-    \item \code{File}: The name of the WAV file, located in the directory
-      \code{data-raw/wav-sibilants/} in the source package, that contains
-      the uncompressed audio data for the production.
-    \item \code{Participant}: An alphanumeric code for the participant who
-      produced the production.
-    \item \code{Session}: An alphanumeric code for the session during which
-      the production was recorded. Each \code{Participant} code corresponds
-      to 2 \code{Session} codes.
-    \item \code{SessionCompleted}: The date and time that the participant
-      completed the session, during which the production was recorded,
-      in \code{YYYY-MM-DD HH:MM:SS} format.
-    \item \code{TaggingCompleted}: The date and time that a research
-      assistant completed tagging all productions from a given session,
-      in \code{YYYY-MM-DD HH:MM:SS} format.
+  \enumerate{
+    \item \code{SessionDate}: The date on which the participant completed the
+      session, in \code{YYYY-MM-DD} format.
+    \item \code{Session}: An alphanumeric code for the session. Each adult
+      completed two sessions; each child completed one.
+    \item \code{Adult}: A logical vector indicating whether the participant
+      is an adult (= \code{TRUE}) or a child (= \code{FALSE}).
+    \item \code{Participant}: An alphanumeric code for the participant.
+    \item \code{Age}: An integer vector, the ages, in months, of the children
+      and \code{NA_integer_} for the adults.
+    \item \code{Female}: A logical vector indicating whether the participant
+      is female (= \code{TRUE}) or male (= \code{FALSE}).
+    \item \code{MAE}: A logical vector indicating whether the audio prompts
+      in the session were presented in Mainstream American English
+      (= \code{TRUE}) or African American English (= \code{FALSE}).
+    \item \code{StimulusSet}: An integer vector indicating which (multi)set
+      of sibilant-initial words were elicited during the session. Adults
+      completed two sessions with stimulus sets 2 and 3. Children completed
+      one session with either stimulus set 1 or 2, depending on their age:
+      children 32 months and younger completed set 1; children 34
+      months and older completed set 2.
     \item \code{Trial}: The trial number within the session when the
       production was elicited.
     \item \code{Orthography}: The orthographic transcription of the word
       presented during the \code{Trial}, used to elicit a production of a
       sibilant fricative.
-    \item \code{TargetC}: The WorldBet transcription of the target sibilant
+    \item \code{Target}: The WorldBet transcription of the target sibilant
       fricative.
-    \item \code{TargetV}: The WorldBet trancscription of the vowel that
-      immediately followed the target sibilant fricative.
-    \item \code{TaggedOnset}: The time of the onset of frication for the
-      production in the original audio recording of the full session.
-    \item \code{TaggedVOT}: The time of the onset of voicing for the
-      production in the original audio recording of the full session.
-    \item \code{Onset}: The time of the onset of frication for the
-      production in the WAV file listed in \code{File}. Always \code{0.02}.
-    \item \code{VOT}: The time of the onset of voicing for the production
-      in the WAV file listed in \code{File}.
+    \item \code{Transcription}: A broad WorldBet transcription of the
+      produced sibilant fricative. Note: \code{s:S} denotes a produced
+      sibilant whose place of articulation was judged to be intermediate
+      between \code{s} and \code{S}, but closer to \code{S}; and conversely
+      for \code{S:s}.
+    \item \code{Rating}: A numeric vector, \code{NA_real_} for productions
+      by adults; the mean rating along a visual analog scale for productions
+      by children. See "Visual Analog Scale Ratings" section below.
     \item \code{ExcitationPattern}: A list-column of 361-component numeric
       vectors, each of which represents the values of an excitation pattern
       computed from the production. These values are associated to the
@@ -54,10 +58,11 @@ A \code{\link[tibble]{tibble}} with 990 rows (i.e., sibilant
   }
 }
 \description{
-Access the internal data set of sibilant fricatives produced by 16 adult
-native speakers of American English, who were recorded as part of the
-Learning to Talk Project. The target productions were elicited in
-word-initial, pre-vocalic position with a real word repetition task.
+Access the internal data set for productions of target sibilant fricatives
+by 16 adult native speakers and 69 two- to three-year-old native learners
+of American English, who participated in the Learning to Talk Project.
+The participants' productions were elicited in word-initial pre-vocalic
+position during a real word repetition task.
 }
 \section{Excitation Patterns}{
 
@@ -80,6 +85,31 @@ word-initial, pre-vocalic position with a real word repetition task.
   of this data set.
 }
 
-\seealso{
-\code{\link{StopBursts}}
+\section{Visual Analog Scale Ratings}{
+
+  Each production by a child was used as a stimulus in a visual-analog-scale
+  perceptual rating task. From the recording of each of these whole-word
+  productions, the initial CV sequence was extracted, beginning 5 ms prior
+  to the onset of sibilant frication and ending 150 ms after the onset of
+  voicing for the vowel. Batches of these extracted sequences were then
+  presented to 70 listeners who were all native monolingual speakers of
+  American English between the ages of 18 and 50 years and who reported
+  no current or previous speech, language, or hearing disorder.
+
+  On each trial in the perceptual rating task, the listener saw a
+  double-headed arrow anchored by the text "the 's' sound" at one end and
+  "the 'sh' sound" at the other. The stimulus was played once, and the
+  listener was asked to rate where the initial consonant fell on this
+  visual analog scale by clicking at an appropriate location along the
+  arrow. The click location in pixels was logged automatically, and the
+  pixel locations have been normalized to fall within the [0,1] range, where
+  0 denotes an ideal /s/, and 1 denotes an ideal /S/.
+
+  Listeners were given no explicit instructions on what criteria they should
+  use to judge the fricative. They were encouraged to use their 'gut instinct'.
+  Each stimulus was rated by at least 15 listeners. The mean normalized
+  rating (i.e., within the [0,1] range) was computed for each stimulus, and
+  this mean rating is the number that appears in the \code{Rating} column
+  of this data set.
 }
+
